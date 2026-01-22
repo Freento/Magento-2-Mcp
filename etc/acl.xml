@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="Magento_Backend::system">
+                    <resource id="Freento_Mcp::mcp" title="Freento MCP" sortOrder="100">
+                        <resource id="Freento_Mcp::acl_rules" title="ACL Rules" sortOrder="10"/>
+                        <resource id="Freento_Mcp::user_tokens" title="User Tokens and Permissions" sortOrder="20"/>
+                    </resource>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

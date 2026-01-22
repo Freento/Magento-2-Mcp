@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">freento_mcp_usertoken_listing.freento_mcp_usertoken_listing_data_source</item>
+        </item>
+    </argument>
+    <settings>
+        <spinner>freento_mcp_usertoken_columns</spinner>
+        <deps>
+            <dep>freento_mcp_usertoken_listing.freento_mcp_usertoken_listing_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="freento_mcp_usertoken_listing_data_source" component="Magento_Ui/js/grid/provider">
+        <settings>
+            <storageConfig>
+                <param name="indexField" xsi:type="string">user_id</param>
+            </storageConfig>
+            <updateUrl path="mui/index/render"/>
+        </settings>
+        <aclResource>Freento_Mcp::user_tokens</aclResource>
+        <dataProvider class="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider" name="freento_mcp_usertoken_listing_data_source">
+            <settings>
+                <requestFieldName>user_id</requestFieldName>
+                <primaryFieldName>user_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filters name="listing_filters"/>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+    <columns name="freento_mcp_usertoken_columns">
+        <column name="user_id">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">ID</label>
+                <sorting>asc</sorting>
+            </settings>
+        </column>
+        <column name="username">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Username</label>
+            </settings>
+        </column>
+        <column name="email">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Email</label>
+            </settings>
+        </column>
+        <column name="has_token" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Has Token</label>
+                <options>
+                    <option name="yes" xsi:type="array">
+                        <item name="value" xsi:type="string">1</item>
+                        <item name="label" xsi:type="string" translate="true">Yes</item>
+                    </option>
+                    <option name="no" xsi:type="array">
+                        <item name="value" xsi:type="string">0</item>
+                        <item name="label" xsi:type="string" translate="true">No</item>
+                    </option>
+                </options>
+            </settings>
+        </column>
+        <column name="mcp_role_name">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">MCP ACL Rule</label>
+            </settings>
+        </column>
+        <actionsColumn name="actions"
+                       class="Freento\Mcp\Ui\Component\Listing\Column\UserTokenActions"
+                       component="Freento_Mcp/js/grid/columns/user-token-actions">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="generateTokenUrl" xsi:type="url" path="freento_mcp/usertoken/generateToken"/>
+                    <item name="assignRoleUrl" xsi:type="url" path="freento_mcp/usertoken/assignRole"/>
+                    <item name="removeAccessUrl" xsi:type="url" path="freento_mcp/usertoken/removeAccess"/>
+                </item>
+            </argument>
+            <settings>
+                <indexField>user_id</indexField>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>

@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Core Interfaces -->
+    <preference for="Freento\Mcp\Api\McpServerInterface"
+                type="Freento\Mcp\Model\McpServer"/>
+
+    <preference for="Freento\Mcp\Api\ToolResultInterface"
+                type="Freento\Mcp\Model\ToolResult"/>
+
+    <!-- ACL Interfaces -->
+    <preference for="Freento\Mcp\Api\Data\AclRoleInterface"
+                type="Freento\Mcp\Model\AclRole"/>
+
+    <preference for="Freento\Mcp\Api\Data\UserTokenInterface"
+                type="Freento\Mcp\Model\UserToken"/>
+
+    <preference for="Freento\Mcp\Api\AclRoleRepositoryInterface"
+                type="Freento\Mcp\Model\AclRoleRepository"/>
+
+    <preference for="Freento\Mcp\Api\UserTokenRepositoryInterface"
+                type="Freento\Mcp\Model\UserTokenRepository"/>
+
+    <!-- Tool Registry with all tools -->
+    <type name="Freento\Mcp\Model\ToolRegistry">
+        <arguments>
+            <argument name="tools" xsi:type="array">
+                <!-- Sales -->
+                <item name="get_orders" xsi:type="object">Freento\Mcp\Model\Tool\GetOrders</item>
+                <item name="get_order_items" xsi:type="object">Freento\Mcp\Model\Tool\GetOrderItems</item>
+                <item name="get_quotes" xsi:type="object">Freento\Mcp\Model\Tool\GetQuotes</item>
+                <item name="get_quote_items" xsi:type="object">Freento\Mcp\Model\Tool\GetQuoteItems</item>
+                <!-- Catalog -->
+                <item name="get_products" xsi:type="object">Freento\Mcp\Model\Tool\GetProducts</item>
+                <item name="get_stock_single_stock" xsi:type="object">Freento\Mcp\Model\Tool\GetStockSingleStock</item>
+                <!-- Customer -->
+                <item name="get_customers" xsi:type="object">Freento\Mcp\Model\Tool\GetCustomers</item>
+                <!-- Admin -->
+                <item name="get_admins" xsi:type="object">Freento\Mcp\Model\Tool\GetAdmins</item>
+                <item name="get_locked_admins" xsi:type="object">Freento\Mcp\Model\Tool\GetLockedAdmins</item>
+                <!-- System -->
+                <item name="get_system_versions" xsi:type="object">Freento\Mcp\Model\Tool\GetSystemVersions</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Router Configuration -->
+    <type name="Freento\Mcp\Model\Router">
+        <arguments>
+            <argument name="serverInstructions" xsi:type="string">Magento 2 MCP Server by Freento. Use available tools to interact with the Magento store.</argument>
+        </arguments>
+    </type>
+
+    <!-- Data Providers for Admin UI -->
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="freento_mcp_aclrole_listing_data_source" xsi:type="string">Freento\Mcp\Model\ResourceModel\AclRole\Collection</item>
+                <item name="freento_mcp_usertoken_listing_data_source" xsi:type="string">Freento\Mcp\Model\ResourceModel\UserToken\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+</config>

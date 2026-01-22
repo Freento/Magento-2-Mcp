@@ -1,0 +1,125 @@
+<div class="admin__field" data-bind="visible: visible">
+    <label class="admin__field-label">
+        <span data-bind="text: label"></span>
+    </label>
+    <div class="admin__field-control">
+        <div class="mcp-tools-checkboxes" data-bind="foreach: groupedOptions">
+            <div class="mcp-tools-group">
+                <div class="mcp-tools-group-header">
+                    <label>
+                        <input type="checkbox"
+                               class="admin__control-checkbox"
+                               data-bind="
+                                   checked: $parent.isModuleFullyChecked(module, tools),
+                                   click: function() { $parent.toggleModule(module); return true; }
+                               "/>
+                        <span class="mcp-module-name" data-bind="text: module"></span>
+                        <span class="mcp-tools-count" data-bind="text: '(' + tools.length + ')'"></span>
+                    </label>
+                </div>
+                <div class="mcp-tools-list" data-bind="foreach: tools">
+                    <div class="mcp-tool-item">
+                        <label>
+                            <input type="checkbox"
+                                   class="mcp-tool-checkbox"
+                                   data-bind="
+                                       value: value,
+                                       checked: $parents[1].value
+                                   "/>
+                            <span class="mcp-tool-name" data-bind="text: value"></span>
+                            <span class="mcp-tool-description" data-bind="text: description"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="admin__field-note">
+            <span>Select tools this role can access. Click module header to select/deselect all tools in that module.</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .mcp-tools-checkboxes {
+        max-width: 800px;
+    }
+    .mcp-tools-group {
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    .mcp-tools-group-header {
+        padding: 12px 15px;
+        background: linear-gradient(to bottom, #f8f8f8, #f0f0f0);
+        border-bottom: 1px solid #ccc;
+    }
+    .mcp-tools-group-header label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        margin: 0;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .mcp-tools-group-header input[type="checkbox"] {
+        margin-right: 10px;
+        width: 18px;
+        height: 18px;
+        appearance: auto;
+        -webkit-appearance: checkbox;
+        opacity: 1;
+        position: static;
+    }
+    .mcp-module-name {
+        color: #333;
+    }
+    .mcp-tools-count {
+        margin-left: 8px;
+        color: #888;
+        font-weight: normal;
+        font-size: 13px;
+    }
+    .mcp-tools-list {
+        padding: 10px 15px 10px 40px;
+        background: #fff;
+    }
+    .mcp-tool-item {
+        padding: 6px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .mcp-tool-item:last-child {
+        border-bottom: none;
+    }
+    .mcp-tool-item label {
+        display: flex;
+        align-items: flex-start;
+        cursor: pointer;
+        margin: 0;
+        font-weight: normal;
+    }
+    .mcp-tool-checkbox {
+        margin-right: 10px;
+        margin-top: 3px;
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        appearance: auto;
+        -webkit-appearance: checkbox;
+        opacity: 1 !important;
+        position: static !important;
+    }
+    .mcp-tool-name {
+        font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        font-size: 13px;
+        color: #0066cc;
+        white-space: nowrap;
+        font-weight: 500;
+        margin-right: 8px;
+    }
+    .mcp-tool-description {
+        color: #666;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+</style>

@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <table name="freento_mcp_acl_role" resource="default" engine="innodb" comment="MCP ACL Roles">
+        <column xsi:type="int" name="role_id" unsigned="true" nullable="false" identity="true" comment="Role ID"/>
+        <column xsi:type="varchar" name="name" nullable="false" length="255" comment="Role Name"/>
+        <column xsi:type="varchar" name="access_type" nullable="false" length="20" default="specified" comment="Access Type: all or specified"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="role_id"/>
+        </constraint>
+    </table>
+
+    <table name="freento_mcp_acl_role_tool" resource="default" engine="innodb" comment="MCP ACL Role Tools">
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="int" name="role_id" unsigned="true" nullable="false" comment="Role ID"/>
+        <column xsi:type="varchar" name="tool_name" nullable="false" length="255" comment="Tool Name"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="FK_MCP_ROLE_TOOL_ROLE_ID"
+                    table="freento_mcp_acl_role_tool" column="role_id"
+                    referenceTable="freento_mcp_acl_role" referenceColumn="role_id"
+                    onDelete="CASCADE"/>
+        <constraint xsi:type="unique" referenceId="UNQ_MCP_ROLE_TOOL">
+            <column name="role_id"/>
+            <column name="tool_name"/>
+        </constraint>
+        <index referenceId="IDX_MCP_ROLE_TOOL_ROLE_ID" indexType="btree">
+            <column name="role_id"/>
+        </index>
+    </table>
+
+    <table name="freento_mcp_user_token" resource="default" engine="innodb" comment="MCP User Tokens">
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="int" name="admin_user_id" unsigned="true" nullable="false" comment="Admin User ID"/>
+        <column xsi:type="varchar" name="token_hash" nullable="false" length="255" comment="Token Hash"/>
+        <column xsi:type="int" name="role_id" unsigned="true" nullable="true" comment="Role ID"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="FK_MCP_USER_TOKEN_ADMIN_USER_ID"
+                    table="freento_mcp_user_token" column="admin_user_id"
+                    referenceTable="admin_user" referenceColumn="user_id"
+                    onDelete="CASCADE"/>
+        <constraint xsi:type="foreign" referenceId="FK_MCP_USER_TOKEN_ROLE_ID"
+                    table="freento_mcp_user_token" column="role_id"
+                    referenceTable="freento_mcp_acl_role" referenceColumn="role_id"
+                    onDelete="SET NULL"/>
+        <constraint xsi:type="unique" referenceId="UNQ_MCP_USER_TOKEN_ADMIN_USER_ID">
+            <column name="admin_user_id"/>
+        </constraint>
+        <index referenceId="IDX_MCP_USER_TOKEN_ROLE_ID" indexType="btree">
+            <column name="role_id"/>
+        </index>
+    </table>
+
+</schema>

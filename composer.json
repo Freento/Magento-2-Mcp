@@ -1,0 +1,23 @@
+{
+    "name": "freento/module-mcp",
+    "description": "MCP (Model Context Protocol) server for Magento 2 - All-in-one module",
+    "type": "magento2-module",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "magento/framework": "*",
+        "magento/module-sales": "*",
+        "magento/module-catalog": "*",
+        "magento/module-customer": "*",
+        "magento/module-user": "*",
+        "magento/module-catalog-inventory": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Freento\\Mcp\\": ""
+        },
+        "files": [
+            "registration.php"
+        ]
+    }
+}

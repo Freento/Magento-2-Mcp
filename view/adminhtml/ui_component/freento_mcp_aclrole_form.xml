@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">freento_mcp_aclrole_form.aclrole_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">ACL Role</item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+    <settings>
+        <buttons>
+            <button name="back" class="Freento\Mcp\Block\Adminhtml\AclRole\Edit\BackButton"/>
+            <button name="delete" class="Freento\Mcp\Block\Adminhtml\AclRole\Edit\DeleteButton"/>
+            <button name="save" class="Freento\Mcp\Block\Adminhtml\AclRole\Edit\SaveButton"/>
+        </buttons>
+        <namespace>freento_mcp_aclrole_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>freento_mcp_aclrole_form.aclrole_form_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="aclrole_form_data_source">
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+        </argument>
+        <settings>
+            <submitUrl path="freento_mcp/aclrole/save"/>
+        </settings>
+        <dataProvider class="Freento\Mcp\Ui\DataProvider\AclRoleFormDataProvider" name="aclrole_form_data_source">
+            <settings>
+                <requestFieldName>role_id</requestFieldName>
+                <primaryFieldName>role_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+    <fieldset name="general">
+        <settings>
+            <label/>
+        </settings>
+        <field name="role_id" formElement="input">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="source" xsi:type="string">aclrole</item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+                <dataScope>role_id</dataScope>
+            </settings>
+        </field>
+        <field name="name" sortOrder="10" formElement="input">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="source" xsi:type="string">aclrole</item>
+                </item>
+            </argument>
+            <settings>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Role Name</label>
+                <dataScope>name</dataScope>
+            </settings>
+        </field>
+        <field name="access_type" sortOrder="20" formElement="select">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="source" xsi:type="string">aclrole</item>
+                    <item name="switcherConfig" xsi:type="array">
+                        <item name="enabled" xsi:type="boolean">true</item>
+                        <item name="rules" xsi:type="array">
+                            <item name="0" xsi:type="array">
+                                <item name="value" xsi:type="string">specified</item>
+                                <item name="actions" xsi:type="array">
+                                    <item name="0" xsi:type="array">
+                                        <item name="target" xsi:type="string">freento_mcp_aclrole_form.freento_mcp_aclrole_form.general.tools</item>
+                                        <item name="callback" xsi:type="string">visible</item>
+                                        <item name="params" xsi:type="array">
+                                            <item name="0" xsi:type="boolean">true</item>
+                                        </item>
+                                    </item>
+                                </item>
+                            </item>
+                            <item name="1" xsi:type="array">
+                                <item name="value" xsi:type="string">all</item>
+                                <item name="actions" xsi:type="array">
+                                    <item name="0" xsi:type="array">
+                                        <item name="target" xsi:type="string">freento_mcp_aclrole_form.freento_mcp_aclrole_form.general.tools</item>
+                                        <item name="callback" xsi:type="string">visible</item>
+                                        <item name="params" xsi:type="array">
+                                            <item name="0" xsi:type="boolean">false</item>
+                                        </item>
+                                    </item>
+                                </item>
+                            </item>
+                        </item>
+                    </item>
+                </item>
+                <item name="options" xsi:type="array">
+                    <item name="0" xsi:type="array">
+                        <item name="value" xsi:type="string">all</item>
+                        <item name="label" xsi:type="string" translate="true">All Tools</item>
+                    </item>
+                    <item name="1" xsi:type="array">
+                        <item name="value" xsi:type="string">specified</item>
+                        <item name="label" xsi:type="string" translate="true">Specified</item>
+                    </item>
+                </item>
+            </argument>
+            <settings>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Access Type</label>
+                <dataScope>access_type</dataScope>
+            </settings>
+        </field>
+        <container name="tools" sortOrder="30" class="Freento\Mcp\Ui\Component\Form\ToolsCheckboxes">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="component" xsi:type="string">Freento_Mcp/js/form/element/tools-checkboxes</item>
+                    <item name="template" xsi:type="string">Freento_Mcp/form/element/tools-checkboxes</item>
+                    <item name="label" xsi:type="string" translate="true">Allowed Tools</item>
+                    <item name="visible" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </container>
+    </fieldset>
+</form>

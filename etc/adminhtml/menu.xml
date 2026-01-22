@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Freento_Mcp::mcp"
+             title="Freento MCP"
+             module="Freento_Mcp"
+             sortOrder="100"
+             parent="Magento_Backend::system"
+             resource="Freento_Mcp::mcp"/>
+
+        <add id="Freento_Mcp::acl_rules"
+             title="ACL Rules"
+             module="Freento_Mcp"
+             sortOrder="10"
+             parent="Freento_Mcp::mcp"
+             action="freento_mcp/aclrole/index"
+             resource="Freento_Mcp::acl_rules"/>
+
+        <add id="Freento_Mcp::user_tokens"
+             title="User Tokens and Permissions"
+             module="Freento_Mcp"
+             sortOrder="20"
+             parent="Freento_Mcp::mcp"
+             action="freento_mcp/usertoken/index"
+             resource="Freento_Mcp::user_tokens"/>
+    </menu>
+</config>
