@@ -31,10 +31,12 @@ Freento MCP is a Magento 2 extension that implements the [Model Context Protocol
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│  AI Assistant   │  HTTP   │  Freento MCP    │  SQL    │    Magento 2    │
-│  (Claude/GPT)   │ ◄─────► │  Server         │ ◄─────► │    Database     │
+│  AI Assistant   │  HTTP   │  Freento MCP    │         │   Magento 2 /   │
+│  (Claude/GPT)   │ ◄─────► │  Server         │ ◄─────► │Server Resources │
 └─────────────────┘ JSON-RPC└─────────────────┘         └─────────────────┘
 ```
+
+The MCP server acts as a secure bridge between AI assistants and your Magento installation, providing access to various store resources including the database, configuration, and other Magento subsystems.
 
 ## Requirements
 
@@ -74,18 +76,34 @@ Expected output: `Module is enabled`
 
 ## Configuration
 
-### Create Access Token
+### Step 1: Create ACL Role
 
-1. In Magento Admin, go to **System > Integrations**
-2. Click **Add New Integration**
-3. Fill in the **Name** (e.g., "MCP Server")
-4. Under **API** tab, select required resources:
-   - `Sales > Operations > Orders` (for order tools)
-   - `Catalog > Inventory > Products` (for product/stock tools)
-   - `Customers` (for customer tools)
-   - `System > Other Settings` (for system tools)
-5. **Save** and **Activate** the integration
-6. Copy the **Access Token**
+1. In Magento Admin, go to **System > Freento MCP > ACL Rules**
+2. Click **Add New Role**
+3. Enter a name (e.g., "AI Assistant")
+4. Select which tools the role can access:
+   - Sales tools (orders, quotes, credit memos)
+   - Catalog tools (products, stock)
+   - Customer tools
+   - Admin tools
+   - System tools
+5. **Save** the role
+
+### Step 2: Create OAuth Client
+
+1. Go to **System > Freento MCP > AI MCP Clients**
+2. Click **Add New Client**
+3. Enter a name (e.g., "Claude Code")
+4. Select the ACL Role created in Step 1
+5. **Save** the client
+6. Copy the **Client ID** and **Client Secret**
+
+### Step 3: Generate Access Token
+
+1. Open the OAuth Client you created
+2. Click **Generate OTP** — copy the one-time password (valid 24 hours)
+3. Click **Generate Token** — enter the OTP when prompted
+4. Copy the generated **Access Token**
 
 ### Claude Code
 
@@ -131,13 +149,14 @@ Edit your Claude Desktop config (`~/.config/claude/claude_desktop_config.json` o
 
 Restart Claude Desktop to apply changes.
 
-### ChatGPT (with MCP Plugin)
+### ChatGPT and Other Web Clients
 
-Configure your MCP plugin with:
+For web-based AI tools that support OAuth 2.0:
 
-- **Endpoint URL:** `https://your-store.com/freento_mcp/index/index`
-- **Authorization:** Bearer token authentication
-- **Token:** Your Magento integration access token
+1. Register your store's MCP endpoint: `https://your-store.com/freento_mcp/index/index`
+2. Enter the **Client ID** and **Client Secret** from Step 2
+3. When prompted to authorize, enter the **OTP** generated from the OAuth Client page
+4. Complete the OAuth authorization flow
 
 ## Available Tools
 
@@ -409,13 +428,13 @@ The `get_orders` tool supports aggregation for analytics:
 
 ### "Authentication failed" error
 
-- Verify your access token is correct and not revoked
-- Check the integration is activated in Magento Admin
-- Ensure the token has required API permissions
+- Verify your access token is correct
+- Check the OAuth Client is enabled in Magento Admin
+- Regenerate the token if it has expired
 
 ### "Access denied" error
 
-The integration lacks required API permissions. Edit the integration in Magento Admin and grant access to the necessary resources.
+The ACL Role lacks required permissions. Edit the ACL Role in **System > Freento MCP > ACL Rules** and grant access to the necessary tools.
 
 ### Connection timeout
 
@@ -438,13 +457,13 @@ curl -X POST https://your-store.com/freento_mcp/index/index \
 
 1. **Use HTTPS** — Always use HTTPS in production to encrypt API communications
 
-2. **Minimal Permissions** — Grant only the API permissions needed for your use case
+2. **Minimal Permissions** — Grant only the tools needed for your use case via ACL Roles
 
-3. **Separate Integrations** — Create separate integrations for different users/purposes
+3. **Separate Clients** — Create separate OAuth Clients for different users/purposes
 
-4. **Regular Audits** — Periodically review active integrations and revoke unused ones
+4. **Regular Audits** — Periodically review active clients and disable unused ones
 
-5. **IP Restrictions** — If possible, restrict API access to known IP addresses
+5. **Token Rotation** — Regenerate access tokens periodically
 
 ### Token Security
 
@@ -453,15 +472,9 @@ curl -X POST https://your-store.com/freento_mcp/index/index \
 - Rotate tokens periodically
 - Revoke tokens immediately if compromised
 
-### Data Privacy
-
-The MCP server provides read-only access to Magento data. Sensitive information like passwords is never exposed. Customer data should be handled according to your privacy policy and applicable regulations (GDPR, CCPA, etc.).
-
 ## Support
 
-- **Issues & Bug Reports:** [GitHub Issues](https://github.com/AmpelAI/freento-mcp/issues)
-- **Documentation:** [README.md](README.md)
-- **MCP Protocol:** [modelcontextprotocol.io](https://modelcontextprotocol.io)
+**Contact:** [https://freento.com/contact](https://freento.com/contact)
 
 ## License
 
