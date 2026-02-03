@@ -1,4 +1,4 @@
-# Freento MCP for Magento 2 — User Guide
+# MCP for Magento 2 — User Guide
 
 Connect your Magento 2 store to AI assistants like Claude and ChatGPT using the Model Context Protocol (MCP).
 
