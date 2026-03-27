@@ -1,0 +1,66 @@
+<!-- New client message -->
+<div data-bind="visible: isNewClient()" class="admin__field">
+    <label class="admin__field-label"></label>
+    <div class="admin__field-control">
+        <span class="admin__field-note" data-bind="i18n: 'Save the client first to generate a token.'"></span>
+    </div>
+</div>
+
+<!-- Existing client -->
+<div data-bind="visible: !isNewClient()">
+    <!-- Token Status -->
+    <div class="admin__field">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'Status'"></span>
+        </label>
+        <div class="admin__field-control">
+            <span data-bind="visible: hasToken() && !generatedToken()" style="display: inline-block; padding: 5px 12px; background: #d4edda; color: #155724; border-radius: 3px;">
+                <span data-bind="i18n: 'Active'"></span>
+            </span>
+            <span data-bind="visible: !hasToken() && !generatedToken()" style="display: inline-block; padding: 5px 12px; background: #e2e3e5; color: #383d41; border-radius: 3px;">
+                <span data-bind="i18n: 'No active token'"></span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Generated token display -->
+    <div class="admin__field" data-bind="visible: generatedToken()">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'Token'"></span>
+        </label>
+        <div class="admin__field-control">
+            <div style="padding: 10px 15px; background: #d4edda; color: #155724; border-radius: 3px; border: 1px solid #c3e6cb; margin-bottom: 10px;">
+                <span data-bind="i18n: 'Token generated! Copy it now - it will not be shown again.'"></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="text"
+                       class="admin__control-text"
+                       readonly
+                       data-bind="value: generatedToken"
+                       style="font-family: monospace; max-width: 500px;">
+                <button type="button"
+                        class="action-secondary"
+                        data-bind="click: copyToken">
+                    <span data-bind="i18n: 'Copy'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate button -->
+    <div class="admin__field">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'Generate'"></span>
+        </label>
+        <div class="admin__field-control">
+            <button type="button"
+                    class="action-primary"
+                    data-bind="click: generateToken">
+                <span data-bind="i18n: hasToken() ? 'Regenerate Token' : 'Generate Token'"></span>
+            </button>
+            <div class="admin__field-note">
+                <span data-bind="i18n: 'Generate a token directly without OAuth flow. Useful for testing or manual setup.'"></span>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,81 @@
+<!-- New client message -->
+<div data-bind="visible: isNewClient()" class="admin__field">
+    <label class="admin__field-label"></label>
+    <div class="admin__field-control">
+        <span class="admin__field-note" data-bind="i18n: 'Save the client first to generate an OTP.'"></span>
+    </div>
+</div>
+
+<!-- Existing client -->
+<div data-bind="visible: !isNewClient()">
+    <!-- OTP Status -->
+    <div class="admin__field">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'Status'"></span>
+        </label>
+        <div class="admin__field-control">
+            <span data-bind="visible: hasActiveOtp() && !otp()" style="display: inline-block; padding: 5px 12px; background: #d4edda; color: #155724; border-radius: 3px;">
+                <span data-bind="i18n: 'OTP exists'"></span>
+                <span data-bind="visible: otpExpiresAt"> (<span data-bind="i18n: 'expires:'"></span> <span data-bind="text: otpExpiresAt"></span>)</span>
+            </span>
+            <span data-bind="visible: !hasActiveOtp() && !otp()" style="display: inline-block; padding: 5px 12px; background: #e2e3e5; color: #383d41; border-radius: 3px;">
+                <span data-bind="i18n: 'No OTP generated'"></span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Token warning -->
+    <div class="admin__field" data-bind="visible: hasToken()">
+        <label class="admin__field-label"></label>
+        <div class="admin__field-control">
+            <div style="padding: 10px 15px; background: #fff3cd; color: #856404; border-radius: 3px; border: 1px solid #ffeeba;">
+                <span data-bind="i18n: 'This client has an active access token. Generating a new OTP will revoke it.'"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generated OTP display -->
+    <div class="admin__field" data-bind="visible: otp()">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'OTP'"></span>
+        </label>
+        <div class="admin__field-control">
+            <div style="padding: 10px 15px; background: #d4edda; color: #155724; border-radius: 3px; border: 1px solid #c3e6cb; margin-bottom: 10px;">
+                <span data-bind="i18n: 'OTP generated! Copy it now - it will not be shown again.'"></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="text"
+                       class="admin__control-text"
+                       readonly
+                       data-bind="value: otp"
+                       style="font-family: monospace; max-width: 500px;">
+                <button type="button"
+                        class="action-secondary"
+                        data-bind="click: copyOtp">
+                    <span data-bind="i18n: 'Copy'"></span>
+                </button>
+            </div>
+            <div class="admin__field-note" style="margin-top: 5px;">
+                <span data-bind="i18n: 'Expires:'"></span> <span data-bind="text: otpExpiresAt"></span>
+                <span data-bind="i18n: '(24 hours from now)'"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate button -->
+    <div class="admin__field">
+        <label class="admin__field-label">
+            <span data-bind="i18n: 'Generate'"></span>
+        </label>
+        <div class="admin__field-control">
+            <button type="button"
+                    class="action-primary"
+                    data-bind="click: generateOtp">
+                <span data-bind="i18n: otp() ? 'Generate New OTP' : (hasActiveOtp() ? 'Regenerate OTP' : 'Generate OTP')"></span>
+            </button>
+            <div class="admin__field-note">
+                <span data-bind="i18n: 'The OTP is used during the OAuth authorization flow. It expires after 24 hours.'"></span>
+            </div>
+        </div>
+    </div>
+</div>
