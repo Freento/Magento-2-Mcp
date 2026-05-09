@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\QuoteItemResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetQuoteItems extends AbstractTool
 {
     /**
      * @param QuoteItemResource $quoteItemResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly QuoteItemResource $quoteItemResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -44,7 +47,7 @@ class GetQuoteItems extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'quote_item',
             table: 'quote_item',
             fields: [

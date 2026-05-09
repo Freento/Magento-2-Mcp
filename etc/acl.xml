@@ -4,6 +4,13 @@
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="Freento_Mcp::config" title="Freento MCP" sortOrder="900"/>
+                        </resource>
+                    </resource>
+                </resource>
                 <resource id="Magento_Backend::system">
                     <resource id="Freento_Mcp::mcp" title="Freento MCP" sortOrder="100">
                         <resource id="Freento_Mcp::acl_rules" title="ACL Rules" sortOrder="20"/>

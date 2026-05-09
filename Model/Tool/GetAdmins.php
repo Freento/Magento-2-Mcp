@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AdminResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetAdmins extends AbstractTool
 {
     /**
      * @param AdminResource $adminResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly AdminResource $adminResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -43,7 +46,7 @@ class GetAdmins extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'admin',
             table: 'admin_user',
             fields: [
@@ -55,22 +58,26 @@ class GetAdmins extends AbstractTool
                 new Field(
                     name: 'username',
                     type: 'string',
-                    description: 'Username. Supports wildcards.'
+                    description: 'Username. Supports wildcards.',
+                    anonymous: true
                 ),
                 new Field(
                     name: 'email',
                     type: 'string',
-                    description: 'Email. Supports wildcards: "%@example.com" (domain), "admin%" (starts with)'
+                    description: 'Email. Supports wildcards: "%@example.com" (domain), "admin%" (starts with)',
+                    anonymous: true
                 ),
                 new Field(
                     name: 'firstname',
                     type: 'string',
-                    column: true
+                    column: true,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'lastname',
                     type: 'string',
-                    column: true
+                    column: true,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'role_name',

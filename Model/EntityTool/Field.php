@@ -61,6 +61,8 @@ class Field
      * @param bool $allowAggregate Whether field can be used with SUM/AVG/MIN/MAX
      * @param bool $allowGroupBy Whether field can be used for GROUP BY
      * @param array $groupByOptions Additional grouping options (e.g., ['month', 'day'] for dates)
+     * @param bool $anonymous Whether field contains PII and should be hidden in anonymity mode
+     * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
         private string $name,
@@ -71,7 +73,8 @@ class Field
         private ?string $description = null,
         private bool $allowAggregate = false,
         private bool $allowGroupBy = false,
-        private array $groupByOptions = []
+        private array $groupByOptions = [],
+        private bool $anonymous = false
     ) {
     }
 
@@ -208,5 +211,15 @@ class Field
     public function hasGroupByOptions(): bool
     {
         return !empty($this->groupByOptions);
+    }
+
+    /**
+     * Check if field contains PII and should be hidden in anonymity mode
+     *
+     * @return bool
+     */
+    public function isAnonymous(): bool
+    {
+        return $this->anonymous;
     }
 }

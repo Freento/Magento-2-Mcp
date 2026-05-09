@@ -6,6 +6,7 @@ namespace Freento\Mcp\Model\Tool;
 
 use Freento\Mcp\Api\ToolInterface;
 use Freento\Mcp\Api\ToolResultInterface;
+use Freento\Mcp\Model\Config;
 use Freento\Mcp\Model\ToolResultFactory;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Stdlib\DateTime\DateTime;
@@ -22,11 +23,13 @@ class GetLockedAdmins implements ToolInterface
      * @param ResourceConnection $resourceConnection
      * @param ToolResultFactory $resultFactory
      * @param DateTime $dateTime
+     * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resourceConnection,
         private readonly ToolResultFactory $resultFactory,
-        private readonly DateTime $dateTime
+        private readonly DateTime $dateTime,
+        private readonly Config $config
     ) {
     }
 
@@ -69,33 +72,40 @@ Example prompts:
      */
     public function getInputSchema(): array
     {
+        $properties = [
+            'include_expired' => [
+                'type' => 'boolean',
+                'description' => 'Include accounts with expired locks or any failed attempts history'
+                                . ' (default: false, shows only currently locked)'
+            ],
+            'min_failures' => [
+                'type' => 'integer',
+                'description' => 'Minimum number of failed attempts to include (default: 1)'
+            ]
+        ];
+
+        $examples = [
+            new \stdClass(),
+            ['include_expired' => true],
+            ['min_failures' => 3],
+        ];
+
+        if (!$this->config->isAnonymityEnabled()) {
+            $properties['email'] = [
+                'type' => 'string',
+                'description' => 'Filter by email. Supports wildcards.'
+            ];
+            $properties['username'] = [
+                'type' => 'string',
+                'description' => 'Filter by username. Supports wildcards.'
+            ];
+            $examples[] = ['email' => '%@example.com'];
+        }
+
         return [
             'type' => 'object',
-            'properties' => [
-                'include_expired' => [
-                    'type' => 'boolean',
-                    'description' => 'Include accounts with expired locks or any failed attempts history'
-                                    . ' (default: false, shows only currently locked)'
-                ],
-                'email' => [
-                    'type' => 'string',
-                    'description' => 'Filter by email. Supports wildcards.'
-                ],
-                'username' => [
-                    'type' => 'string',
-                    'description' => 'Filter by username. Supports wildcards.'
-                ],
-                'min_failures' => [
-                    'type' => 'integer',
-                    'description' => 'Minimum number of failed attempts to include (default: 1)'
-                ]
-            ],
-            'examples' => [
-                new \stdClass(),
-                ['include_expired' => true],
-                ['min_failures' => 3],
-                ['email' => '%@example.com']
-            ]
+            'properties' => $properties,
+            'examples' => $examples
         ];
     }
 
@@ -110,19 +120,10 @@ Example prompts:
         $appliedFilters = [];
         $includeExpired = !empty($arguments['include_expired']);
         $currentTime = $this->dateTime->gmtDate();
+        $columns = $this->getAvailableColumns();
 
         $select = $connection->select()
-            ->from(['admin' => $adminTable], [
-                'user_id',
-                'firstname',
-                'lastname',
-                'email',
-                'username',
-                'is_active',
-                'failures_num',
-                'first_failure',
-                'lock_expires'
-            ]);
+            ->from(['admin' => $adminTable], $columns);
 
         if ($includeExpired) {
             $select->where(
@@ -135,27 +136,18 @@ Example prompts:
             $appliedFilters[] = "currently_locked: true";
         }
 
-        // Email filter
-        if (!empty($arguments['email'])) {
-            $email = $arguments['email'];
-            if (strpos($email, '%') !== false) {
-                $select->where('admin.email LIKE ?', $email);
-                $appliedFilters[] = "email LIKE: {$email}";
-            } else {
-                $select->where('admin.email = ?', $email);
-                $appliedFilters[] = "email: {$email}";
+        foreach (['email', 'username'] as $textField) {
+            if (empty($arguments[$textField]) || in_array($textField, $columns)) {
+                continue;
             }
-        }
 
-        // Username filter
-        if (!empty($arguments['username'])) {
-            $username = $arguments['username'];
-            if (strpos($username, '%') !== false) {
-                $select->where('admin.username LIKE ?', $username);
-                $appliedFilters[] = "username LIKE: {$username}";
+            $filterValue = $arguments[$textField];
+            if (strpos($filterValue, '%') !== false) {
+                $select->where("admin.$textField LIKE ?", $filterValue);
+                $appliedFilters[] = "{$textField} LIKE: {$filterValue}";
             } else {
-                $select->where('admin.username = ?', $username);
-                $appliedFilters[] = "username: {$username}";
+                $select->where("admin.$textField = ?", $filterValue);
+                $appliedFilters[] = "{$textField}: {$filterValue}";
             }
         }
 
@@ -173,6 +165,28 @@ Example prompts:
         $result = $this->formatLockedAdmins($admins, $appliedFilters, $currentTime, $includeExpired);
 
         return $this->resultFactory->createText($result);
+    }
+
+    /**
+     * Get available columns
+     *
+     * @return string[]
+     */
+    private function getAvailableColumns(): array
+    {
+        $columns = [
+            'user_id',
+            'is_active',
+            'failures_num',
+            'first_failure',
+            'lock_expires'
+        ];
+
+        if (!$this->config->isAnonymityEnabled()) {
+            $columns += ['firstname', 'lastname', 'email', 'username'];
+        }
+
+        return $columns;
     }
 
     /**
@@ -261,11 +275,7 @@ Example prompts:
      */
     private function getAdminDataLines(array $admin, string $currentTime): array
     {
-        $name = trim(($admin['firstname'] ?? '') . ' ' . ($admin['lastname'] ?? ''));
-        if (empty($name)) {
-            $name = 'N/A';
-        }
-
+        $userId = $admin['user_id'] ?? '?';
         $accountStatus = $admin['is_active'] ? 'Active' : 'Inactive';
         $failuresNum = (int)($admin['failures_num'] ?? 0);
         $firstFailure = $admin['first_failure'] ?: 'N/A';
@@ -283,15 +293,36 @@ Example prompts:
         }
 
         $lines = [];
-        $lines[] = "Admin ID: {$admin['user_id']}";
-        $lines[] = "  Username: {$admin['username']}";
-        $lines[] = "  Name: {$name}";
-        $lines[] = "  Email: {$admin['email']}";
+        $lines[] = "Admin ID: {$userId}";
+        $lines += $this->getAdminPersonalDataLines($admin);
         $lines[] = "  Account Status: {$accountStatus}";
         $lines[] = "  Lock Status: {$lockStatus}";
         $lines[] = "  Failed Attempts: {$failuresNum}";
         $lines[] = "  First Failure: {$firstFailure}";
         $lines[] = "";
+        return $lines;
+    }
+
+    /**
+     * Get admin personal data such as Username, Firstname and Lastname and email
+     *
+     * @param array $admin
+     * @return array
+     */
+    private function getAdminPersonalDataLines(array $admin): array
+    {
+        $lines = [];
+        if (isset($admin['username'])) {
+            $lines[] = "  Username: {$admin['username']}";
+        }
+        if (isset($admin['firstname']) || isset($admin['lastname'])) {
+            $name = trim(($admin['firstname'] ?? '') . ' ' . ($admin['lastname'] ?? ''));
+            $lines[] = "  Name: " . ($name !== '' ? $name : 'N/A');
+        }
+        if (isset($admin['email'])) {
+            $lines[] = "  Email: {$admin['email']}";
+        }
+
         return $lines;
     }
 }

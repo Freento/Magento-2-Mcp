@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="freento" translate="label" sortOrder="300">
+            <label>Freento</label>
+        </tab>
+        <section id="freento_mcp" translate="title" sortOrder="100" showInDefault="1"
+                 showInWebsite="0" showInStore="0">
+            <label>MCP</label>
+            <tab>freento</tab>
+            <resource>Freento_Mcp::config</resource>
+            <group id="privacy" translate="label" sortOrder="10" showInDefault="1"
+                   showInWebsite="0" showInStore="0">
+                <label>Privacy</label>
+                <field id="anonymity_enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enable Anonymity Mode</label>
+                    <comment>When enabled, personal data fields (emails, names) are hidden from MCP tool responses and cannot be used for filtering or sorting.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

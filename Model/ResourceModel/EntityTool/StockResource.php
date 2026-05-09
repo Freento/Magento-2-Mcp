@@ -74,12 +74,15 @@ class StockResource extends AbstractResource
             return $rows;
         }
 
-        $connection = $this->resourceConnection->getConnection();
         $entityIds = array_column($rows, 'product_id');
+        if (!$entityIds) {
+            return $rows;
+        }
 
         $eavAttributeTable = $this->resourceConnection->getTableName('eav_attribute');
         $varcharTable = $this->resourceConnection->getTableName('catalog_product_entity_varchar');
 
+        $connection = $this->resourceConnection->getConnection();
         $selectAttr = $connection->select()
             ->from($eavAttributeTable, ['attribute_id'])
             ->where('attribute_code = ?', 'name')

@@ -10,9 +10,9 @@
                         <input type="checkbox"
                                class="admin__control-checkbox"
                                data-bind="
-                                   checked: $parent.isModuleFullyChecked(module, tools),
+                                   checked: $parent.isModuleChecked(module),
                                    click: function() { $parent.toggleModule(module); return true; }
-                               "/>
+                               ">
                         <span class="mcp-module-name" data-bind="text: module"></span>
                         <span class="mcp-tools-count" data-bind="text: '(' + tools.length + ')'"></span>
                     </label>
@@ -23,9 +23,9 @@
                             <input type="checkbox"
                                    class="mcp-tool-checkbox"
                                    data-bind="
-                                       value: value,
+                                       checkedValue: value,
                                        checked: $parents[1].value
-                                   "/>
+                                   ">
                             <span class="mcp-tool-name" data-bind="text: value"></span>
                             <span class="mcp-tool-description" data-bind="text: description"></span>
                         </label>

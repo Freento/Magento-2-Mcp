@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\CouponResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetCoupons extends AbstractTool
 {
     /**
      * @param CouponResource $couponResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
-        private CouponResource $couponResource,
+        private readonly CouponResource $couponResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -43,7 +46,7 @@ class GetCoupons extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'coupon',
             table: 'salesrule_coupon',
             fields: [

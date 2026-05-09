@@ -34,6 +34,16 @@ class AdminResource extends AbstractResource
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {
         $rows = parent::fetchAll($select, $schema, $arguments);
+        $columns = array_map(
+            function ($column) {
+                return $column[2] ?? $column[1] ?? null;
+            },
+            $select->getPart(Select::COLUMNS)
+        );
+
+        if (!in_array('role_name', $columns) || !in_array('logdate', $columns)) {
+            return $rows;
+        }
 
         foreach ($rows as &$row) {
             $row['role_name'] = $row['role_name'] ?? 'No Role';

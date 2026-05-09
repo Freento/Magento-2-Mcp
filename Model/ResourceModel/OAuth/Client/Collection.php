@@ -30,7 +30,7 @@ class Collection extends AbstractCollection
      */
     public function joinRoleName()
     {
-        $roleTable = $this->getResource()->getConnection()->getTableName('freento_mcp_acl_role');
+        $roleTable = $this->getTable('freento_mcp_acl_role');
         $this->getSelect()->joinLeft(
             ['role' => $roleTable],
             'role.role_id = main_table.role_id',
@@ -47,7 +47,7 @@ class Collection extends AbstractCollection
      */
     public function joinAdminData()
     {
-        $adminUser = $this->getResource()->getConnection()->getTableName('admin_user');
+        $adminUser = $this->getTable('admin_user');
         $this->getSelect()->joinLeft(
             ['admin_user' => $adminUser],
             'admin_user.user_id = main_table.admin_user_id',

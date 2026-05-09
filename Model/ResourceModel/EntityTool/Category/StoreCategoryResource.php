@@ -33,9 +33,8 @@ class StoreCategoryResource extends CategoryResource
         int $offset = 0,
         string $sortBy = '',
         string $sortDir = 'DESC',
-        string $aggregateFunction = '',
-        string $aggregateField = '',
-        string $groupBy = ''
+        array $aggregations = [],
+        array $groupBy = []
     ): ListResult {
         $this->requestedStoreId = (int)($filters['store_id'] ?? 0);
         unset($filters['store_id']);
@@ -48,8 +47,7 @@ class StoreCategoryResource extends CategoryResource
                 $offset,
                 $sortBy,
                 $sortDir,
-                $aggregateFunction,
-                $aggregateField,
+                $aggregations,
                 $groupBy
             );
         } finally {

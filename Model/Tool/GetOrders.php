@@ -11,18 +11,21 @@ use Freento\Mcp\Model\Helper\DateTimeHelper;
 use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\OrderResource;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 use Freento\Mcp\Model\ToolResultFactory;
 
 class GetOrders extends AbstractTool
 {
     /**
      * @param OrderResource $orderResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly OrderResource $orderResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -44,7 +47,7 @@ class GetOrders extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'order',
             table: 'sales_order',
             fields: [
@@ -88,15 +91,18 @@ class GetOrders extends AbstractTool
                     name: 'customer_email',
                     type: 'string',
                     allowGroupBy: true,
-                    description: 'Customer email address'
+                    description: 'Customer email address',
+                    anonymous: true
                 ),
                 new Field(
                     name: 'customer_firstname',
-                    sortable: false
+                    sortable: false,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'customer_lastname',
-                    sortable: false
+                    sortable: false,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'base_grand_total',

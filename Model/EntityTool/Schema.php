@@ -10,26 +10,26 @@ namespace Freento\Mcp\Model\EntityTool;
  * Defines the entity structure: table, fields, and pagination limits.
  * Used by AbstractTool to generate input schema and by AbstractResource for queries.
  *
- * Usage example:
+ * Created via SchemaFactory which automatically applies anonymity config.
+ * Fields marked as anonymous are excluded when anonymity mode is enabled.
+ *
+ * Usage example (via SchemaFactory in a tool):
  * ```php
- * return new Schema(
+ * return $this->schemaFactory->create(
  *     entity: 'order',
  *     table: 'sales_order',
  *     fields: [
  *         new Field(name: 'entity_id', type: 'integer'),
  *         new Field(name: 'status', type: 'string'),
- *         new Field(name: 'grand_total', type: 'currency'),
- *     ],
- *     tableAlias: 'main_table',  // optional, default: 'main_table'
- *     defaultLimit: 50,          // optional, default: 50
- *     maxLimit: 200              // optional, default: 200
+ *         new Field(name: 'customer_email', type: 'string', anonymous: true),
+ *     ]
  * );
  * ```
  */
 class Schema
 {
-    /** @var array<string, Field> Fields indexed by name for quick lookup */
-    private array $fieldsByName;
+    /** @var array<string, Field> Visible fields (excludes anonymous when anonymity enabled) */
+    private array $visibleFields;
 
     /**
      * @param string $entity Entity name (e.g., 'order', 'product') - used in output messages
@@ -38,19 +38,22 @@ class Schema
      * @param string $tableAlias SQL alias for main table (default: 'main_table')
      * @param int $defaultLimit Default pagination limit
      * @param int $maxLimit Maximum allowed limit
+     * @param bool $anonymityEnabled When true, fields marked as anonymous are excluded
      */
     public function __construct(
         private string $entity,
         private string $table,
-        private array $fields,
+        array $fields,
         private string $tableAlias = 'main_table',
         private int $defaultLimit = 50,
-        private int $maxLimit = 200
+        private int $maxLimit = 200,
+        bool $anonymityEnabled = false
     ) {
-        // Build name -> field index for O(1) lookups
-        $this->fieldsByName = [];
+        $this->visibleFields = [];
         foreach ($fields as $field) {
-            $this->fieldsByName[$field->getName()] = $field;
+            if (!$anonymityEnabled || !$field->isAnonymous()) {
+                $this->visibleFields[$field->getName()] = $field;
+            }
         }
     }
 
@@ -79,35 +82,35 @@ class Schema
     }
 
     /**
-     * Get all field definitions
+     * Get visible field definitions
      *
      * @return Field[]
      */
     public function getFields(): array
     {
-        return $this->fields;
+        return $this->visibleFields;
     }
 
     /**
-     * Get field definition by name
+     * Get visible field definition by name
      *
      * @param string $name Field name
-     * @return Field|null Field definition or null if not found
+     * @return Field|null Field definition or null if not found/hidden
      */
     public function getField(string $name): ?Field
     {
-        return $this->fieldsByName[$name] ?? null;
+        return $this->visibleFields[$name] ?? null;
     }
 
     /**
-     * Check if field exists in schema
+     * Check if field exists and is visible
      *
      * @param string $name
      * @return bool
      */
     public function hasField(string $name): bool
     {
-        return isset($this->fieldsByName[$name]);
+        return isset($this->visibleFields[$name]);
     }
 
     /**
@@ -143,7 +146,7 @@ class Schema
     {
         $columns = [];
 
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             $column = $field->getSelectColumn($this->tableAlias);
             if ($column === null) {
                 // Field has no DB column (column: false)
@@ -169,7 +172,7 @@ class Schema
      */
     public function getFilterableFields(): array
     {
-        return array_filter($this->fields, fn (Field $f) => $f->isFilterable());
+        return array_filter($this->visibleFields, fn (Field $f) => $f->isFilterable());
     }
 
     /**
@@ -180,7 +183,7 @@ class Schema
     public function getSortableFieldNames(): array
     {
         $names = [];
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if ($field->isSortable()) {
                 $names[] = $field->getName();
             }
@@ -212,7 +215,7 @@ class Schema
      */
     public function getAggregateFields(): array
     {
-        return array_filter($this->fields, fn (Field $f) => $f->allowsAggregate());
+        return array_filter($this->visibleFields, fn (Field $f) => $f->allowsAggregate());
     }
 
     /**
@@ -224,7 +227,7 @@ class Schema
     {
         $options = [];
 
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if (!$field->allowsGroupBy()) {
                 continue;
             }
@@ -260,7 +263,7 @@ class Schema
      */
     public function getGroupByField(string $groupBy): ?string
     {
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if (!$field->allowsGroupBy()) {
                 continue;
             }
@@ -290,7 +293,7 @@ class Schema
      */
     public function getGroupByType(string $groupBy): ?string
     {
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if ($field->hasGroupByOptions() && in_array($groupBy, $field->getGroupByOptions())) {
                 return $groupBy;
             }
@@ -307,7 +310,7 @@ class Schema
     public function getCurrencyFieldNames(): array
     {
         $names = [];
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if ($field->allowsAggregate() && $field->getType() === 'currency') {
                 $names[] = $field->getName();
             }
@@ -323,7 +326,7 @@ class Schema
     public function getSortableAggregateFields(): array
     {
         return array_filter(
-            $this->fields,
+            $this->visibleFields,
             fn (Field $f) => $f->allowsAggregate() && $f->isSortable()
         );
     }
@@ -337,7 +340,7 @@ class Schema
     {
         $options = [];
 
-        foreach ($this->fields as $field) {
+        foreach ($this->visibleFields as $field) {
             if (!$field->isSortable() || !$field->allowsGroupBy()) {
                 continue;
             }

@@ -70,6 +70,8 @@ use Magento\Framework\DB\Select;
  */
 abstract class AbstractResource
 {
+    public const AGGREGATE_FUNCTIONS = ['sum', 'count', 'avg', 'min', 'max'];
+
     /**
      * @param ResourceConnection $resourceConnection
      * @param ConditionApplier $conditionApplier
@@ -98,9 +100,8 @@ abstract class AbstractResource
      * @param int $offset Pagination offset
      * @param string $sortBy Field to sort by (empty = use schema default)
      * @param string $sortDir Sort direction (ASC or DESC)
-     * @param string $aggregateFunction Aggregate function: sum, count, avg, min, max (empty = no aggregation)
-     * @param string $aggregateField Field to aggregate (required for sum/avg/min/max)
-     * @param string $groupBy Group by field or period: field name, 'month', 'day'
+     * @param array $aggregations List of aggregations, each with 'function' and optional 'field'
+     * @param array $groupBy Group by fields or periods: field names, 'month', 'day'
      * @return ListResult Rows and applied filter descriptions
      */
     public function getList(
@@ -110,29 +111,38 @@ abstract class AbstractResource
         int $offset = 0,
         string $sortBy = '',
         string $sortDir = 'DESC',
-        string $aggregateFunction = '',
-        string $aggregateField = '',
-        string $groupBy = ''
+        array $aggregations = [],
+        array $groupBy = []
     ): ListResult {
+        $isAggregate = !empty($aggregations);
+
         // Create base SELECT with FROM and JOINs
         $select = $this->createSelect($schema);
 
         // Get columns (regular or aggregated)
-        $select->columns($this->getColumns($schema, $aggregateFunction, $aggregateField, $groupBy));
+        $select->columns($this->getColumns($schema, $aggregations, $groupBy));
 
         // Apply GROUP BY if aggregating with grouping
-        if ($aggregateFunction !== '' && $groupBy !== '') {
-            $select->group($this->getGroupByExpression($schema, $groupBy));
+        if ($isAggregate && !empty($groupBy)) {
+            foreach ($groupBy as $group) {
+                $select->group($this->getGroupByExpression($schema, $group));
+            }
         }
 
         // Hook for subclasses to add JOINs
-        $this->applyRequiredJoins($select, $schema, !$aggregateField);
+        $hasAggregateField = !empty(array_filter($aggregations, fn ($a) => !empty($a['field'])));
+        $this->applyRequiredJoins($select, $schema, !$hasAggregateField);
 
         // Apply WHERE conditions from filters
         $appliedFilters = $this->applyFilters($select, $schema, $filters);
 
+        // Resolve sort field for aggregate mode
+        if ($isAggregate) {
+            $sortBy = $this->resolveAggregateSortBy($sortBy, $aggregations, $groupBy);
+        }
+
         // Apply ORDER BY
-        $this->applySorting($select, $schema, $sortBy, $sortDir, $aggregateFunction !== '', $groupBy);
+        $this->applySorting($select, $schema, $sortBy, $sortDir, $isAggregate);
 
         // Apply LIMIT and OFFSET
         $select->limit($schema->normalizeLimit($limit), max(0, $offset));
@@ -150,40 +160,50 @@ abstract class AbstractResource
      * Get SELECT columns - regular fields or aggregate expressions
      *
      * @param Schema $schema Entity schema
-     * @param string $aggregateFunction Aggregate function (empty = regular columns)
-     * @param string $aggregateField Field to aggregate
-     * @param string $groupBy Group by field or period
+     * @param array $aggregations List of aggregations (empty = regular columns)
+     * @param array $groupBy Group by fields or periods
      * @return array Column definitions
      */
     protected function getColumns(
         Schema $schema,
-        string $aggregateFunction,
-        string $aggregateField,
-        string $groupBy
+        array $aggregations,
+        array $groupBy
     ): array {
-        // Regular mode - return schema columns
-        if ($aggregateFunction === '') {
+        if (empty($aggregations)) {
             return $schema->getSelectColumns();
         }
 
-        // Aggregate mode
         $tableAlias = $schema->getTableAlias();
-        $function = strtoupper($aggregateFunction);
+        $columns = [];
 
-        // Build aggregate expression
-        if ($function === 'COUNT') {
-            $aggregateExpr = 'COUNT(*)';
-        } else {
-            $fieldDef = $schema->getField($aggregateField);
-            $column = $fieldDef ? $fieldDef->getSelectColumn($tableAlias) : "{$tableAlias}.{$aggregateField}";
-            $aggregateExpr = "{$function}({$column})";
+        foreach ($aggregations as $aggregation) {
+            if (empty($aggregation['function'])) {
+                continue;
+            }
+
+            $function = strtolower($aggregation['function']);
+            if (!in_array($function, self::AGGREGATE_FUNCTIONS)) {
+                continue;
+            }
+
+            if ($function === 'count') {
+                $columns['count'] = new \Zend_Db_Expr('COUNT(*)');
+                continue;
+            }
+
+            if (!isset($aggregation['field'])) {
+                continue;
+            }
+
+            $field = $aggregation['field'];
+            $sqlFunction = strtoupper($function);
+            $column = $schema->getField($field)->getSelectColumn($tableAlias);
+            $alias = $function . '_' . $field;
+            $columns[$alias] = new \Zend_Db_Expr("$sqlFunction($column)");
         }
 
-        $columns = ['value' => new \Zend_Db_Expr($aggregateExpr)];
-
-        // Add group key column if grouping
-        if ($groupBy !== '') {
-            $columns['group_key'] = $this->getGroupByExpression($schema, $groupBy);
+        foreach ($groupBy as $group) {
+            $columns[$group] = $this->getGroupByExpression($schema, $group);
         }
 
         return $columns;
@@ -201,25 +221,25 @@ abstract class AbstractResource
      */
     protected function getGroupByExpression(Schema $schema, string $groupBy)
     {
-        $tableAlias = $schema->getTableAlias();
+        $groupByType = $schema->getGroupByType($groupBy);
+        $column = $schema->getGroupByField($groupBy);
 
         // Time-based grouping with timezone conversion
-        if ($groupBy === 'month') {
-            $convertedDate = $this->getSqlConvertTzExpr("{$tableAlias}.created_at");
+        if ($groupByType === 'month' && $column) {
+            $convertedDate = $this->getSqlConvertTzExpr($column);
             return new \Zend_Db_Expr("DATE_FORMAT({$convertedDate}, '%Y-%m')");
         }
-        if ($groupBy === 'day') {
-            $convertedDate = $this->getSqlConvertTzExpr("{$tableAlias}.created_at");
+        if ($groupByType === 'day' && $column) {
+            $convertedDate = $this->getSqlConvertTzExpr($column);
             return new \Zend_Db_Expr("DATE({$convertedDate})");
         }
 
         // Field-based grouping
-        $fieldDef = $schema->getField($groupBy);
-        if ($fieldDef) {
-            return $fieldDef->getSelectColumn($tableAlias);
+        if ($column) {
+            return $column;
         }
 
-        return "{$tableAlias}.{$groupBy}";
+        return $schema->getTableAlias() . '.' . $groupBy;
     }
 
     /**
@@ -362,49 +382,75 @@ abstract class AbstractResource
      * Apply ORDER BY clause to SELECT
      *
      * In regular mode: validates sort field against schema's sortable fields.
-     * In aggregate mode: sorts by 'value' or 'group_key'.
+     * In aggregate mode: sorts by aggregate column alias or group_by field name.
      *
      * @param Select $select Database select to modify
      * @param Schema $schema Entity schema
      * @param string $sortBy Requested sort field
      * @param string $sortDir Requested sort direction
      * @param bool $isAggregate Whether in aggregation mode
-     * @param string $groupBy Group by field (for aggregate mode)
      */
     protected function applySorting(
         Select $select,
         Schema $schema,
         string $sortBy,
         string $sortDir,
-        bool $isAggregate = false,
-        string $groupBy = ''
+        bool $isAggregate = false
     ): void {
-        // Validate sort direction
+        $sortFields = $schema->getSortableFieldNames();
+        if (!$isAggregate && !in_array($sortBy, $sortFields)) {
+            return;
+        }
+
         $sortDir = strtoupper($sortDir);
         if (!in_array($sortDir, ['ASC', 'DESC'])) {
             $sortDir = 'DESC';
         }
 
-        // Aggregate mode sorting
-        if ($isAggregate) {
-            // Can sort by 'value' (aggregate result) or 'group_key'
-            if ($groupBy !== '' && $sortBy === $groupBy) {
-                $select->order("group_key {$sortDir}");
-            } else {
-                // Default: sort by aggregate value
-                $select->order("value {$sortDir}");
+        if (!$isAggregate) {
+            $sortBy = "{$schema->getTableAlias()}.{$sortBy}";
+        } elseif (!$sortBy) {
+            $sortBy = '1';
+        }
+
+        $select->order("{$sortBy} {$sortDir}");
+    }
+
+    /**
+     * Resolve sort field name to aggregate column alias or group key alias
+     *
+     * @param string $sortBy Field name from request
+     * @param array $aggregations Aggregation definitions
+     * @param array $groupBy Group by fields
+     * @return string Resolved column alias for ORDER BY
+     */
+    private function resolveAggregateSortBy(string $sortBy, array $aggregations, array $groupBy): string
+    {
+        // Check if sortBy matches a group_by field
+        if (in_array($sortBy, $groupBy)) {
+            return $sortBy;
+        }
+
+        // Check if sortBy matches an aggregation field — use first matching alias
+        $result = '';
+        foreach ($aggregations as $agg) {
+            if (!isset($agg['field'], $agg['function'])) {
+                continue;
             }
-            return;
+
+            $function = strtolower($agg['function']);
+            if ($function === 'count') {
+                continue;
+            }
+
+            if ($agg['field'] !== $sortBy) {
+                continue;
+            }
+
+            $result = $function . '_' . $sortBy;
+            break;
         }
 
-        // Regular mode sorting
-        $sortFields = $schema->getSortableFieldNames();
-
-        // Validate sort field
-        if (!in_array($sortBy, $sortFields)) {
-            $sortBy = $sortFields[0] ?? 'created_at';
-        }
-
-        $select->order("{$schema->getTableAlias()}.{$sortBy} {$sortDir}");
+        return $result;
     }
 }

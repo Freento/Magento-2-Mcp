@@ -17,14 +17,14 @@ class QuoteResource extends AbstractResource
         // Join quote_item to get items count and total qty
         $quoteItemTable = $this->resourceConnection->getTableName('quote_item');
         $select->joinLeft(
-            ['qi' => new \Zend_Db_Expr(
-                "(SELECT quote_id, COUNT(*) as items_count, SUM(qty) as total_qty
+            ['items' => new \Zend_Db_Expr(
+                "(SELECT quote_id, COUNT(*) as items_count
                   FROM {$quoteItemTable}
                   WHERE parent_item_id IS NULL
                   GROUP BY quote_id)"
             )],
-            'main_table.entity_id = qi.quote_id',
-            ['items_count' => 'qi.items_count', 'total_qty' => 'qi.total_qty']
+            'main_table.entity_id = items.quote_id',
+            ['items_count']
         );
     }
 
@@ -34,11 +34,18 @@ class QuoteResource extends AbstractResource
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {
         $rows = parent::fetchAll($select, $schema, $arguments);
+        $firstRow = current($rows);
+        $keys = array_keys($firstRow);
+        if (
+            !in_array('is_active', $keys)
+            && !in_array('items_count', $keys)
+        ) {
+            return $rows;
+        }
 
         foreach ($rows as &$row) {
-            $row['status_label'] = $row['is_active'] ? 'Active' : 'Converted to Order';
+            $row['status_label'] = ($row['is_active'] ?? false) ? 'Active' : 'Converted to Order';
             $row['items_count'] = $row['items_count'] ?? 0;
-            $row['total_qty'] = $row['total_qty'] ?? 0;
         }
 
         return $rows;

@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\StockResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetStockSingleStock extends AbstractTool
 {
     /**
      * @param StockResource $stockResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly StockResource $stockResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -51,7 +54,7 @@ class GetStockSingleStock extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'stock_item',
             table: 'cataloginventory_stock_item',
             fields: [

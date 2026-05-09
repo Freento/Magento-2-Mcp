@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\QuoteResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetQuotes extends AbstractTool
 {
     /**
      * @param QuoteResource $quoteResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly QuoteResource $quoteResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -44,7 +47,7 @@ class GetQuotes extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'quote',
             table: 'quote',
             fields: [
@@ -86,7 +89,7 @@ class GetQuotes extends AbstractTool
                 new Field(
                     name: 'items_count',
                     type: 'integer',
-                    column: false,
+                    column: 'items.items_count',
                     filter: false,
                     sortable: false,
                     allowAggregate: true
@@ -133,19 +136,22 @@ class GetQuotes extends AbstractTool
                     name: 'customer_email',
                     type: 'string',
                     allowGroupBy: true,
-                    description: 'Customer email address'
+                    description: 'Customer email address',
+                    anonymous: true
                 ),
                 new Field(
                     name: 'customer_firstname',
                     type: 'string',
                     filter: false,
-                    sortable: false
+                    sortable: false,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'customer_lastname',
                     type: 'string',
                     filter: false,
-                    sortable: false
+                    sortable: false,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'customer_is_guest',

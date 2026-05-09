@@ -49,9 +49,8 @@ class ProductResourceProxy extends AbstractResource
         int $offset = 0,
         string $sortBy = '',
         string $sortDir = 'DESC',
-        string $aggregateFunction = '',
-        string $aggregateField = '',
-        string $groupBy = ''
+        array $aggregations = [],
+        array $groupBy = []
     ): ListResult {
         $resource = isset($filters['store_id']) && (int)$filters['store_id'] > 0
             ? $this->storeProductResource
@@ -64,8 +63,7 @@ class ProductResourceProxy extends AbstractResource
             $offset,
             $sortBy,
             $sortDir,
-            $aggregateFunction,
-            $aggregateField,
+            $aggregations,
             $groupBy
         );
     }

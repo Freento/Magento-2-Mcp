@@ -25,8 +25,8 @@ class CategoryResource extends AbstractResource
     /** @var array Filter arguments from current request */
     private array $requestedFilters = [];
 
-    /** @var string Aggregate function for current request (empty = no aggregation) */
-    private string $aggregateFunction = '';
+    /** @var bool Whether current request is aggregate mode */
+    private bool $isAggregate = false;
 
     /** @var Select|null Outer query for wrapping subquery */
     private ?Select $outerSelect = null;
@@ -58,12 +58,11 @@ class CategoryResource extends AbstractResource
         int $offset = 0,
         string $sortBy = '',
         string $sortDir = 'DESC',
-        string $aggregateFunction = '',
-        string $aggregateField = '',
-        string $groupBy = ''
+        array $aggregations = [],
+        array $groupBy = []
     ): ListResult {
         $this->requestedFilters = $filters;
-        $this->aggregateFunction = $aggregateFunction;
+        $this->isAggregate = !empty($aggregations);
         $this->outerSelect = $this->resourceConnection->getConnection()->select();
 
         try {
@@ -74,13 +73,12 @@ class CategoryResource extends AbstractResource
                 $offset,
                 $sortBy,
                 $sortDir,
-                $aggregateFunction,
-                $aggregateField,
+                $aggregations,
                 $groupBy
             );
         } finally {
             $this->requestedFilters = [];
-            $this->aggregateFunction = '';
+            $this->isAggregate = false;
         }
     }
 
@@ -251,7 +249,7 @@ class CategoryResource extends AbstractResource
      */
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {
-        if ($this->aggregateFunction) {
+        if ($this->isAggregate) {
             return parent::fetchAll($select, $schema, $arguments);
         }
 

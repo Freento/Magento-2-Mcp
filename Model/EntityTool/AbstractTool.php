@@ -21,7 +21,7 @@ use Freento\Mcp\Model\ToolResultFactory;
  * ## Creating a Tool
  *
  * 1. Extend this class
- * 2. Implement buildSchema() to define entity structure
+ * 2. Implement buildSchema() to define entity structure (use SchemaFactory)
  * 3. Implement getResource() to return the resource model
  * 4. Create a corresponding Resource class extending AbstractResource
  *
@@ -29,17 +29,18 @@ use Freento\Mcp\Model\ToolResultFactory;
  * class GetOrders extends AbstractTool
  * {
  *     public function __construct(
- *         OrderResource $orderResource,
+ *         private readonly OrderResource $orderResource,
+ *         private readonly SchemaFactory $schemaFactory,
  *         ToolResultFactory $resultFactory,
- *         StringHelper $stringHelper
+ *         StringHelper $stringHelper,
+ *         DateTimeHelper $dateTimeHelper
  *     ) {
- *         parent::__construct($resultFactory, $stringHelper);
- *         $this->orderResource = $orderResource;
+ *         parent::__construct($resultFactory, $stringHelper, $dateTimeHelper);
  *     }
  *
  *     protected function buildSchema(): Schema
  *     {
- *         return new Schema(
+ *         return $this->schemaFactory->create(
  *             entity: 'order',
  *             table: 'sales_order',
  *             fields: [
@@ -276,7 +277,7 @@ abstract class AbstractTool implements ToolInterface
     protected function getOutputFields(): array
     {
         return array_map(
-            fn(Field $field) => $field->getName(),
+            fn (Field $field) => $field->getName(),
             $this->getSchema()->getFields()
         );
     }
@@ -299,32 +300,45 @@ abstract class AbstractTool implements ToolInterface
         $aggFields = $schema->getAggregateFields();
         $groupByOptions = $schema->getGroupByOptions();
 
-        if (!empty($aggFields) || !empty($groupByOptions)) {
-            $properties['function'] = [
-                'type' => 'string',
-                'enum' => ['count'],
-                'description' => 'Aggregation function (if provided, returns aggregated data instead of list)'
-            ];
-
-            if (!empty($aggFields)) {
-                $aggFieldNames = array_values(array_map(fn($f) => $f->getName(), $aggFields));
-                $properties['field'] = [
+        // By default, all child tools support the "count" aggregation function
+        $aggregationItem = [
+            'type' => 'object',
+            'properties' => [
+                'function' => [
                     'type' => 'string',
-                    'enum' => $aggFieldNames,
-                    'description' => 'Field to aggregate (required for sum/avg/min/max)'
-                ];
+                    'enum' => ['count'],
+                    'description' => 'Aggregation function'
+                ],
+            ],
+            'required' => ['function'],
+        ];
 
-                $properties['function']['enum'] = ['sum', 'count', 'avg', 'min', 'max'];
-            }
+        if (!empty($aggFields)) {
+            $aggFieldNames = array_values(array_map(fn ($f) => $f->getName(), $aggFields));
+            $aggregationItem['properties']['field'] = [
+                'type' => 'string',
+                'enum' => $aggFieldNames,
+                'description' => 'Field to aggregate (required for sum/avg/min/max)'
+            ];
+            $aggregationItem['properties']['function']['enum'] = AbstractResource::AGGREGATE_FUNCTIONS;
+        }
 
-            if (!empty($groupByOptions)) {
-                $properties['group_by'] = [
+        if (!empty($groupByOptions)) {
+            $properties['group_by'] = [
+                'type' => 'array',
+                'items' => [
                     'type' => 'string',
                     'enum' => $groupByOptions,
-                    'description' => 'Group results by field or time period'
-                ];
-            }
+                ],
+                'description' => 'Group results by one or more fields or time periods'
+            ];
         }
+
+        $properties['aggregations'] = [
+            'type' => 'array',
+            'items' => $aggregationItem,
+            'description' => 'List of aggregations (if provided, returns aggregated data instead of list)',
+        ];
 
         // Generate filter properties for each filterable field
         foreach ($schema->getFilterableFields() as $field) {
@@ -416,9 +430,8 @@ abstract class AbstractTool implements ToolInterface
         $sortDir = (string)($arguments['sort_dir'] ?? 'DESC');
 
         // Check for aggregation mode
-        $function = (string)($arguments['function'] ?? '');
-        $field = (string)($arguments['field'] ?? '');
-        $groupBy = (string)($arguments['group_by'] ?? '');
+        $aggregations = (array)($arguments['aggregations'] ?? []);
+        $groupBy = (array)($arguments['group_by'] ?? []);
 
         // Fetch data from database via resource model
         $result = $resource->getList(
@@ -428,18 +441,16 @@ abstract class AbstractTool implements ToolInterface
             $offset,
             $sortBy,
             $sortDir,
-            $function,
-            $field,
+            $aggregations,
             $groupBy
         );
 
         // Format output based on mode
-        if ($function !== '') {
+        if (!empty($aggregations)) {
             // Aggregate mode
             $formatted = $this->formatAggregateOutput(
                 $result->getRows(),
-                $function,
-                $field,
+                $aggregations,
                 $groupBy,
                 $result->getAppliedFilters()
             );
@@ -453,54 +464,46 @@ abstract class AbstractTool implements ToolInterface
     }
 
     /**
-     * Format aggregate results as simple text output
+     * Format aggregate results as text output
      *
      * @param array $rows Aggregate result rows
-     * @param string $function Aggregate function used
-     * @param string $field Field aggregated
-     * @param string $groupBy Group by option
+     * @param array $aggregations List of aggregations
+     * @param array $groupBy Group by options
      * @param array $appliedFilters Applied filter descriptions
      * @return string Formatted output
      */
     protected function formatAggregateOutput(
         array $rows,
-        string $function,
-        string $field,
-        string $groupBy,
+        array $aggregations,
+        array $groupBy,
         array $appliedFilters
     ): string {
         $entity = $this->getSchema()->getEntity();
-        $function = strtoupper($function);
-
-        // Build description
-        if ($function === 'COUNT') {
-            $description = ucfirst($entity) . ' count';
-        } else {
-            $fieldLabel = $field ? str_replace('_', ' ', $field) : 'value';
-            $description = ucfirst(strtolower($function)) . " of {$fieldLabel}";
-        }
-
+        $columnNames = $this->getAggregateColumnNames($aggregations);
         $lines = [];
 
-        if ($groupBy) {
-            $groupByLabel = str_replace('_', ' ', $groupBy);
-            $lines[] = "{$description} by {$groupByLabel}:";
-            $lines[] = '';
-
-            if (empty($rows)) {
-                $lines[] = 'No data found.';
+        // Build description from aggregation labels
+        $labels = [];
+        foreach ($aggregations as $agg) {
+            $function = strtoupper($agg['function']);
+            if ($function === 'COUNT') {
+                $labels[] = 'count';
             } else {
-                foreach ($rows as $row) {
-                    $key = $row['group_key'] ?? 'Unknown';
-                    $value = $this->formatAggregateValue($row['value'], $function, $field);
-                    $lines[] = "  {$key}: {$value}";
-                }
+                $field = $agg['field'] ?? '';
+                $labels[] = strtolower($function) . ' of ' . str_replace('_', ' ', $field);
             }
-        } else {
-            $value = $rows[0]['value'] ?? 0;
-            $formattedValue = $this->formatAggregateValue($value, $function, $field);
-            $lines[] = "{$description}: {$formattedValue}";
         }
+
+        $description = ucfirst($entity) . ' — ' . implode(', ', $labels);
+        if (!empty($groupBy)) {
+            $groupByLabel = implode(', ', array_map(fn ($g) => str_replace('_', ' ', $g), $groupBy));
+            $lines[] = "$description by $groupByLabel:";
+        } else {
+            $lines[] = "$description:";
+        }
+
+        $lines[] = '';
+        $lines = array_merge($lines, $this->formatAggregateRows($rows, $columnNames, $groupBy));
 
         if (!empty($appliedFilters)) {
             $lines[] = '';
@@ -511,20 +514,91 @@ abstract class AbstractTool implements ToolInterface
     }
 
     /**
-     * Format aggregate value based on function and field type
+     * Format single aggregate result row
+     *
+     * @param array $rows Aggregate result rows
+     * @param string[] $columnNames Aggregate column aliases
+     * @param array $groupBy Group by fields
+     * @return string[] Formatted lines
+     */
+    private function formatAggregateRows(array $rows, array $columnNames, array $groupBy): array
+    {
+        if (empty($rows)) {
+            return ['No data found.'];
+        }
+
+        $lines = [];
+        foreach ($rows as $row) {
+            $lines[] = '  ' . $this->formatAggregateRow($row, $columnNames, $groupBy);
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Format single aggregate result row
+     *
+     * @param array $row Result row
+     * @param string[] $columnNames Aggregate column aliases
+     * @param array $groupBy Group by fields
+     * @return string Formatted row
+     */
+    private function formatAggregateRow(array $row, array $columnNames, array $groupBy): string
+    {
+        $valueParts = [];
+        foreach (array_unique($columnNames) as $colName) {
+            $value = $this->formatAggregateValue($row[$colName] ?? 0, $colName);
+            $valueParts[$colName] = "$colName: $value";
+        }
+
+        $result = implode(', ', $valueParts);
+        $groupParts = [];
+        foreach ($groupBy as $group) {
+            $groupParts[] = $row[$group] ?? 'Unknown';
+        }
+
+        if ($groupParts) {
+            $result = implode(' | ', $groupParts) . ': ' . $result;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get aggregate column names from aggregations list
+     *
+     * @param array $aggregations List of aggregations
+     * @return string[] Column aliases
+     */
+    private function getAggregateColumnNames(array $aggregations): array
+    {
+        $names = [];
+        foreach ($aggregations as $agg) {
+            $function = strtolower($agg['function']);
+            $field = $agg['field'] ?? '';
+            $names[] = $function === 'count' ? 'count' : $function . '_' . $field;
+        }
+
+        return $names;
+    }
+
+    /**
+     * Format aggregate value based on column name
      *
      * @param mixed $value Raw value
-     * @param string $function Aggregate function
-     * @param string $field Field name
+     * @param string $columnName Aggregate column name (e.g., 'min_grand_total', 'count')
      * @return string Formatted value
      */
-    protected function formatAggregateValue($value, string $function, string $field): string
+    protected function formatAggregateValue(mixed $value, string $columnName): string
     {
-        if ($function === 'COUNT') {
+        if (str_starts_with($columnName, 'count')) {
             return number_format((int)$value);
         }
 
+        // Extract field name from column: "min_grand_total" → "grand_total"
+        $field = preg_replace('/^(sum|avg|min|max)_/', '', $columnName);
         $fieldDef = $this->getSchema()->getField($field);
+
         if ($fieldDef && $fieldDef->getType() === 'currency') {
             return number_format((float)$value, 2);
         }

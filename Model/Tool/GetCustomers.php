@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\CustomerResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetCustomers extends AbstractTool
 {
     /**
      * @param CustomerResource $customerResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
         private readonly CustomerResource $customerResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -43,7 +46,7 @@ class GetCustomers extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'customer',
             table: 'customer_entity',
             fields: [
@@ -55,17 +58,20 @@ class GetCustomers extends AbstractTool
                 new Field(
                     name: 'email',
                     type: 'string',
-                    description: 'Customer email address (supports wildcards: %@example.com)'
+                    description: 'Customer email address (supports wildcards: %@example.com)',
+                    anonymous: true
                 ),
                 new Field(
                     name: 'firstname',
                     type: 'string',
-                    column: true
+                    column: true,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'lastname',
                     type: 'string',
-                    column: true
+                    column: true,
+                    anonymous: true
                 ),
                 new Field(
                     name: 'group_id',

@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <freento_mcp>
+            <privacy>
+                <anonymity_enabled>0</anonymity_enabled>
+            </privacy>
+        </freento_mcp>
+    </default>
+</config>

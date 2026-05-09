@@ -62,8 +62,8 @@ class SchemaTest extends TestCase
 
         $fields = $schema->getFields();
         $this->assertCount(2, $fields);
-        $this->assertSame($field1, $fields[0]);
-        $this->assertSame($field2, $fields[1]);
+        $this->assertSame($field1, $fields[$field1->getName()]);
+        $this->assertSame($field2, $fields[$field2->getName()]);
     }
 
     /**
@@ -502,5 +502,194 @@ class SchemaTest extends TestCase
         // Multiple lookups should return same instance
         $this->assertSame($field, $schema->getField('test_field'));
         $this->assertSame($field, $schema->getField('test_field'));
+    }
+
+    /**
+     * Test getFields excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetFieldsAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'id', type: 'integer'),
+                new Field(name: 'email', type: 'string', anonymous: true),
+                new Field(name: 'status', type: 'string'),
+            ],
+            anonymityEnabled: true
+        );
+
+        $fields = $schema->getFields();
+        $names = array_map(fn (Field $f) => $f->getName(), $fields);
+
+        $this->assertCount(2, $fields);
+        $this->assertContains('id', $names);
+        $this->assertContains('status', $names);
+        $this->assertNotContains('email', $names);
+    }
+
+    /**
+     * Test getFields returns all fields when anonymity is disabled
+     */
+    public function testGetFieldsAnonymityDisabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'id', type: 'integer'),
+                new Field(name: 'email', type: 'string', anonymous: true),
+                new Field(name: 'status', type: 'string'),
+            ],
+            anonymityEnabled: false
+        );
+
+        $fields = $schema->getFields();
+
+        $this->assertCount(3, $fields);
+    }
+
+    /**
+     * Test getField returns null for anonymous field when anonymity is enabled
+     */
+    public function testGetFieldAnonymousReturnsNull(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'email', type: 'string', anonymous: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $this->assertNull($schema->getField('email'));
+    }
+
+    /**
+     * Test hasField returns false for anonymous field when anonymity is enabled
+     */
+    public function testHasFieldAnonymousReturnsFalse(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'email', type: 'string', anonymous: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $this->assertFalse($schema->hasField('email'));
+    }
+
+    /**
+     * Test getFilterableFields excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetFilterableFieldsAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'status', filter: true),
+                new Field(name: 'email', filter: true, anonymous: true),
+                new Field(name: 'id', filter: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $result = $schema->getFilterableFields();
+        $names = array_map(fn (Field $f) => $f->getName(), $result);
+
+        $this->assertCount(2, $result);
+        $this->assertContains('status', $names);
+        $this->assertContains('id', $names);
+        $this->assertNotContains('email', $names);
+    }
+
+    /**
+     * Test getSortableFieldNames excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetSortableFieldNamesAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'id', sortable: true),
+                new Field(name: 'email', sortable: true, anonymous: true),
+                new Field(name: 'name', sortable: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $sortable = $schema->getSortableFieldNames();
+
+        $this->assertEquals(['id', 'name'], $sortable);
+    }
+
+    /**
+     * Test getSelectColumns excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetSelectColumnsAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'id', column: true),
+                new Field(name: 'email', column: true, anonymous: true),
+                new Field(name: 'status', column: true),
+            ],
+            tableAlias: 'main',
+            anonymityEnabled: true
+        );
+
+        $columns = $schema->getSelectColumns();
+
+        $this->assertEquals(['main.id', 'main.status'], $columns);
+    }
+
+    /**
+     * Test getGroupByOptions excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetGroupByOptionsAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'status', allowGroupBy: true),
+                new Field(name: 'email', allowGroupBy: true, anonymous: true),
+                new Field(name: 'store_id', allowGroupBy: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $options = $schema->getGroupByOptions();
+
+        $this->assertEquals(['status', 'store_id'], $options);
+    }
+
+    /**
+     * Test getCurrencyFieldNames excludes anonymous fields when anonymity is enabled
+     */
+    public function testGetCurrencyFieldNamesAnonymityEnabled(): void
+    {
+        $schema = new Schema(
+            entity: 'test',
+            table: 'test_table',
+            fields: [
+                new Field(name: 'total', type: 'currency', allowAggregate: true),
+                new Field(name: 'secret_total', type: 'currency', allowAggregate: true, anonymous: true),
+            ],
+            anonymityEnabled: true
+        );
+
+        $result = $schema->getCurrencyFieldNames();
+
+        $this->assertEquals(['total'], $result);
     }
 }

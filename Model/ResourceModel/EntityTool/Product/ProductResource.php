@@ -27,8 +27,8 @@ class ProductResource extends AbstractResource
     /** @var array Filter arguments from current request */
     private array $requestedFilters = [];
 
-    /** @var string Aggregate function for current request (empty = no aggregation) */
-    private string $aggregateFunction = '';
+    /** @var bool Whether current request is aggregate mode */
+    private bool $isAggregate = false;
 
     /** @var Select|null Outer query for wrapping subquery */
     private ?Select $outerSelect = null;
@@ -60,12 +60,11 @@ class ProductResource extends AbstractResource
         int $offset = 0,
         string $sortBy = '',
         string $sortDir = 'DESC',
-        string $aggregateFunction = '',
-        string $aggregateField = '',
-        string $groupBy = ''
+        array $aggregations = [],
+        array $groupBy = []
     ): ListResult {
         $this->requestedFilters = $filters;
-        $this->aggregateFunction = $aggregateFunction;
+        $this->isAggregate = !empty($aggregations);
         $this->outerSelect = $this->resourceConnection->getConnection()->select();
 
         try {
@@ -76,13 +75,12 @@ class ProductResource extends AbstractResource
                 $offset,
                 $sortBy,
                 $sortDir,
-                $aggregateFunction,
-                $aggregateField,
+                $aggregations,
                 $groupBy
             );
         } finally {
             $this->requestedFilters = [];
-            $this->aggregateFunction = '';
+            $this->isAggregate = false;
         }
     }
 
@@ -91,7 +89,7 @@ class ProductResource extends AbstractResource
      */
     protected function applyRequiredJoins(Select $select, Schema $schema, bool $addJoinedFieldsToSelect = true): void
     {
-        $categoryTable = $this->resourceConnection->getConnection()->getTableName('catalog_category_product');
+        $categoryTable = $this->resourceConnection->getTableName('catalog_category_product');
         $select->joinLeft(
             ['catalog_category_product' => $categoryTable],
             'main_table.entity_id = catalog_category_product.product_id',
@@ -260,7 +258,7 @@ class ProductResource extends AbstractResource
      */
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {
-        if ($this->aggregateFunction) {
+        if ($this->isAggregate) {
             return parent::fetchAll($select, $schema, $arguments);
         }
 

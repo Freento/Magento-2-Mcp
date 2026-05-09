@@ -12,17 +12,20 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\CreditmemoResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 
 class GetCreditmemos extends AbstractTool
 {
     /**
      * @param CreditmemoResource $creditmemoResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      */
     public function __construct(
-        private CreditmemoResource $creditmemoResource,
+        private readonly CreditmemoResource $creditmemoResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper
@@ -43,7 +46,7 @@ class GetCreditmemos extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'creditmemo',
             table: 'sales_creditmemo',
             fields: [
@@ -132,7 +135,8 @@ class GetCreditmemos extends AbstractTool
                     type: 'string',
                     column: 'order.customer_email',
                     sortable: false,
-                    description: 'Customer email'
+                    description: 'Customer email',
+                    anonymous: true
                 ),
             ],
             defaultLimit: 50,

@@ -13,12 +13,14 @@ use Freento\Mcp\Model\Helper\StringHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\CartPriceRuleResource;
 use Freento\Mcp\Model\ToolResultFactory;
+use Freento\Mcp\Model\EntityTool\SchemaFactory;
 use Psr\Log\LoggerInterface;
 
 class GetCartPriceRules extends AbstractTool
 {
     /**
      * @param CartPriceRuleResource $cartPriceRuleResource
+     * @param SchemaFactory $schemaFactory
      * @param ToolResultFactory $resultFactory
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
@@ -27,6 +29,7 @@ class GetCartPriceRules extends AbstractTool
      */
     public function __construct(
         private readonly CartPriceRuleResource $cartPriceRuleResource,
+        private readonly SchemaFactory $schemaFactory,
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper,
@@ -58,7 +61,7 @@ class GetCartPriceRules extends AbstractTool
      */
     protected function buildSchema(): Schema
     {
-        return new Schema(
+        return $this->schemaFactory->create(
             entity: 'cart_price_rule',
             table: 'salesrule',
             fields: [

@@ -470,6 +470,8 @@ curl -X POST https://your-store.com/freento_mcp/index/index \
 
 5. **Token Rotation** — Regenerate access tokens periodically
 
+6. **Anonymity Mode** — Enable anonymity mode in `Stores > Configuration > Freento MCP > Privacy` to hide PII fields (emails, names) from MCP tool responses. Since AI assistants connecting via MCP are third-party services, it is recommended to enable this mode to prevent customer personal data from being transmitted externally unless explicitly needed.
+
 ### Token Security
 
 - Never commit tokens to version control
