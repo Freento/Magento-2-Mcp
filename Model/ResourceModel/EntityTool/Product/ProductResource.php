@@ -10,6 +10,7 @@ use Freento\Mcp\Model\EntityTool\ListResultFactory;
 use Freento\Mcp\Model\EntityTool\Schema;
 use Freento\Mcp\Model\Helper\DateTimeHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
+use Freento\Mcp\Model\ResourceModel\EntityTool\LinkField;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as AttributeCollectionFactory;
 use Magento\Eav\Model\Entity\Attribute;
 use Magento\Framework\App\ResourceConnection;
@@ -20,6 +21,10 @@ class ProductResource extends AbstractResource
     protected const EAV_ATTRIBUTES = [
         'name', 'price', 'cost', 'special_price', 'special_from_date', 'special_to_date', 'status', 'visibility'
     ];
+
+    private const CATEGORY_TABLE = 'catalog_category_product';
+    private const CATEGORY_TABLE_ALIAS = 'cat_group';
+    private const CATEGORY_COLUMN = self::CATEGORY_TABLE_ALIAS . '.category_id';
 
     /** @var array<string, Attribute>|null */
     private ?array $attributes = null;
@@ -39,13 +44,15 @@ class ProductResource extends AbstractResource
      * @param ListResultFactory $listResultFactory
      * @param DateTimeHelper $dateTimeHelper
      * @param AttributeCollectionFactory $attributeCollectionFactory
+     * @param LinkField $linkField
      */
     public function __construct(
         ResourceConnection $resourceConnection,
         ConditionApplier $conditionApplier,
         ListResultFactory $listResultFactory,
         DateTimeHelper $dateTimeHelper,
-        private readonly AttributeCollectionFactory $attributeCollectionFactory
+        private readonly AttributeCollectionFactory $attributeCollectionFactory,
+        private readonly LinkField $linkField
     ) {
         parent::__construct($resourceConnection, $conditionApplier, $listResultFactory, $dateTimeHelper);
     }
@@ -86,15 +93,19 @@ class ProductResource extends AbstractResource
 
     /**
      * @inheritDoc
+     * @throws \Exception
      */
     protected function applyRequiredJoins(Select $select, Schema $schema, bool $addJoinedFieldsToSelect = true): void
     {
-        $categoryTable = $this->resourceConnection->getTableName('catalog_category_product');
-        $select->joinLeft(
-            ['catalog_category_product' => $categoryTable],
-            'main_table.entity_id = catalog_category_product.product_id',
-            []
-        );
+        if ($this->isGroupedByCategory($select)) {
+            $categoryTable = $this->resourceConnection->getTableName(self::CATEGORY_TABLE);
+            $alias = self::CATEGORY_TABLE_ALIAS;
+            $select->joinLeft(
+                [$alias => $categoryTable],
+                "main_table.entity_id = $alias.product_id",
+                []
+            );
+        }
 
         // Subquery: join only EAV attributes needed for filtering
         $filterAttributes = array_values(array_intersect(
@@ -104,7 +115,10 @@ class ProductResource extends AbstractResource
         $this->applyEavJoins($select, $schema, $addJoinedFieldsToSelect, $filterAttributes);
 
         // Outer query: join remaining EAV attributes for display columns
-        if ($addJoinedFieldsToSelect) {
+        if ($addJoinedFieldsToSelect && !$this->isAggregate) {
+            // The outer display joins reference the subquery link field, so expose it there.
+            $this->applyLinkFieldPassthrough($select);
+
             $displayAttributes = array_values(array_diff(
                 static::EAV_ATTRIBUTES,
                 array_keys($this->requestedFilters)
@@ -113,7 +127,70 @@ class ProductResource extends AbstractResource
             $this->applyEavJoins($this->getOuterSelect(), $schema, $addJoinedFieldsToSelect, $displayAttributes);
         }
 
-        $select->distinct(true);
+        if ($addJoinedFieldsToSelect && !$this->isAggregate) {
+            $this->applyCategoryListColumn($this->getOuterSelect());
+        }
+    }
+
+    /**
+     * Expose all category IDs of each product as a comma-separated value on the outer SELECT.
+     *
+     * Uses a correlated subquery that runs only over the already-LIMITed rows, so there is
+     * no main JOIN and no row inflation in list mode.
+     *
+     * @param Select $outerSelect
+     */
+    private function applyCategoryListColumn(Select $outerSelect): void
+    {
+        $categoryTable = $this->resourceConnection->getTableName(self::CATEGORY_TABLE);
+        $outerSelect->columns([
+            'category_id' => new \Zend_Db_Expr(
+                "(SELECT GROUP_CONCAT(category_id ORDER BY category_id) "
+                . "FROM {$categoryTable} WHERE product_id = main_table.entity_id)"
+            )
+        ]);
+    }
+
+    /**
+     * Whether the current query groups by category_id (and therefore needs the category join)
+     *
+     * @param Select $select
+     * @return bool
+     * @throws \Zend_Db_Select_Exception
+     */
+    private function isGroupedByCategory(Select $select): bool
+    {
+        $groupParts = $select->getPart(Select::GROUP) ?: [];
+
+        return in_array(self::CATEGORY_COLUMN, $groupParts, true);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function getGroupByExpression(Schema $schema, string $groupBy)
+    {
+        if ($groupBy === 'category_id') {
+            return self::CATEGORY_COLUMN;
+        }
+
+        return parent::getGroupByExpression($schema, $groupBy);
+    }
+
+    /**
+     * Expose the link field on the subquery so the outer EAV joins can reference it
+     *
+     * @param Select $select
+     * @throws \Exception
+     */
+    private function applyLinkFieldPassthrough(Select $select): void
+    {
+        $linkField = $this->linkField->forProduct();
+        if ($linkField === 'entity_id') {
+            return;
+        }
+
+        $select->columns([$linkField => "main_table.$linkField"]);
     }
 
     /**
@@ -186,10 +263,13 @@ class ProductResource extends AbstractResource
      * @param int $attributeId
      * @param int $storeId
      * @return string
+     * @throws \Exception
      */
     protected function buildEavJoinCondition(string $eavTable, int $attributeId, int $storeId): string
     {
-        return "main_table.entity_id = $eavTable.entity_id"
+        $linkField = $this->linkField->forProduct();
+
+        return "main_table.$linkField = $eavTable.$linkField"
             . " AND $eavTable.attribute_id = $attributeId"
             . " AND $eavTable.store_id = $storeId";
     }
@@ -213,6 +293,11 @@ class ProductResource extends AbstractResource
     protected function applyFilters(Select $select, Schema $schema, array $arguments): array
     {
         $appliedFilters = parent::applyFilters($select, $schema, $arguments);
+
+        $categoryAppliedFilter = $this->applyCategoryFilter($select, $schema, $arguments);
+        if ($categoryAppliedFilter !== null) {
+            $appliedFilters[] = $categoryAppliedFilter;
+        }
 
         $fromTables = $select->getPart('from');
         if (!$fromTables || count($fromTables) <= 1) {
@@ -248,6 +333,68 @@ class ProductResource extends AbstractResource
         }
 
         return $appliedFilters;
+    }
+
+    /**
+     * Apply category_id filter
+     *
+     * Two paths:
+     * - When catalog_category_product is already joined (group_by: category_id),
+     *   the condition is applied directly to the joined column so that GROUP BY
+     *   only sees the filtered categories.
+     * - Otherwise, an EXISTS subquery is used to avoid main JOIN row inflation.
+     *
+     * @param Select $select
+     * @param Schema $schema
+     * @param array $arguments
+     * @return string|null Applied filter description, or null if no filter was applied
+     * @throws \Zend_Db_Select_Exception
+     */
+    protected function applyCategoryFilter(Select $select, Schema $schema, array $arguments): ?string
+    {
+        $value = $arguments['category_id'] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $field = $schema->getField('category_id');
+        if ($field === null || !$field->isFilterable()) {
+            return null;
+        }
+
+        // When the category table is already joined for grouping, filter the joined column
+        // directly so GROUP BY only sees the requested categories. Otherwise constrain via an
+        // EXISTS subquery to avoid main JOIN row inflation.
+        $condition = $this->isGroupedByCategory($select)
+            ? $this->conditionApplier->buildCondition(self::CATEGORY_COLUMN, $value, $field->getType())
+            : $this->buildCategoryExistsCondition($value, $field->getType());
+
+        if ($condition === null) {
+            return null;
+        }
+
+        $select->where($condition);
+        return $this->getAppliedFilterResultString('category_id', $value);
+    }
+
+    /**
+     * Build an EXISTS condition matching products assigned to the requested category
+     *
+     * @param mixed $value
+     * @param string $type
+     * @return string|null Null when the underlying value condition cannot be built
+     */
+    private function buildCategoryExistsCondition($value, string $type): ?string
+    {
+        $categoryTable = $this->resourceConnection->getTableName(self::CATEGORY_TABLE);
+        $alias = 'category_filter';
+        $valueCondition = $this->conditionApplier->buildCondition("$alias.category_id", $value, $type);
+        if ($valueCondition === null) {
+            return null;
+        }
+
+        return "EXISTS (SELECT 1 FROM $categoryTable AS $alias WHERE $alias.product_id = main_table.entity_id "
+            . "AND $valueCondition)";
     }
 
     /**

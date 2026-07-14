@@ -4,11 +4,32 @@ declare(strict_types=1);
 
 namespace Freento\Mcp\Model\ResourceModel\EntityTool;
 
+use Freento\Mcp\Model\EntityTool\ConditionApplier;
+use Freento\Mcp\Model\EntityTool\ListResultFactory;
 use Freento\Mcp\Model\EntityTool\Schema;
+use Freento\Mcp\Model\Helper\DateTimeHelper;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Select;
 
 class StockResource extends AbstractResource
 {
+    /**
+     * @param ResourceConnection $resourceConnection
+     * @param ConditionApplier $conditionApplier
+     * @param ListResultFactory $listResultFactory
+     * @param DateTimeHelper $dateTimeHelper
+     * @param LinkField $linkField
+     */
+    public function __construct(
+        ResourceConnection $resourceConnection,
+        ConditionApplier $conditionApplier,
+        ListResultFactory $listResultFactory,
+        DateTimeHelper $dateTimeHelper,
+        private readonly LinkField $linkField
+    ) {
+        parent::__construct($resourceConnection, $conditionApplier, $listResultFactory, $dateTimeHelper);
+    }
+
     /**
      * @inheritDoc
      */
@@ -65,6 +86,7 @@ class StockResource extends AbstractResource
 
     /**
      * @inheritDoc
+     * @throws \Exception
      */
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {
@@ -81,6 +103,7 @@ class StockResource extends AbstractResource
 
         $eavAttributeTable = $this->resourceConnection->getTableName('eav_attribute');
         $varcharTable = $this->resourceConnection->getTableName('catalog_product_entity_varchar');
+        $productTable = $this->resourceConnection->getTableName('catalog_product_entity');
 
         $connection = $this->resourceConnection->getConnection();
         $selectAttr = $connection->select()
@@ -96,11 +119,18 @@ class StockResource extends AbstractResource
             return $rows;
         }
 
+        // The varchar EAV table is keyed by the link field, so resolve names through catalog_product_entity
+        $linkField = $this->linkField->forProduct();
         $selectNames = $connection->select()
-            ->from($varcharTable, ['entity_id', 'value'])
-            ->where('attribute_id = ?', $nameAttributeId)
-            ->where('store_id = 0')
-            ->where('entity_id IN (?)', $entityIds);
+            ->from(['cpe' => $productTable], ['entity_id'])
+            ->join(
+                ['v' => $varcharTable],
+                "v.$linkField = cpe.$linkField",
+                ['value']
+            )
+            ->where('v.attribute_id = ?', $nameAttributeId)
+            ->where('v.store_id = 0')
+            ->where('cpe.entity_id IN (?)', $entityIds);
 
         $names = $connection->fetchPairs($selectNames);
 

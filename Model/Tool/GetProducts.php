@@ -148,10 +148,13 @@ class GetProducts extends AbstractTool
                 new Field(
                     name: 'category_id',
                     type: 'integer',
-                    column: 'catalog_category_product.category_id',
+                    column: false,
                     filter: true,
                     sortable: false,
-                    allowGroupBy: true
+                    allowGroupBy: true,
+                    description: 'Filter by category ID. In the listing the field returns a'
+                        . ' comma-separated list of all categories the product belongs to.'
+                        . ' When grouping by category_id, each row corresponds to a single category.'
                 ),
             ],
             defaultLimit: 20,

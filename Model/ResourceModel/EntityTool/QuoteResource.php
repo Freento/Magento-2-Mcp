@@ -18,13 +18,13 @@ class QuoteResource extends AbstractResource
         $quoteItemTable = $this->resourceConnection->getTableName('quote_item');
         $select->joinLeft(
             ['items' => new \Zend_Db_Expr(
-                "(SELECT quote_id, COUNT(*) as items_count
+                "(SELECT quote_id, COUNT(*) as items_count, SUM(qty) as items_qty
                   FROM {$quoteItemTable}
                   WHERE parent_item_id IS NULL
                   GROUP BY quote_id)"
             )],
             'main_table.entity_id = items.quote_id',
-            ['items_count']
+            ['items_count', 'items_qty']
         );
     }
 

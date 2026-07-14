@@ -10,6 +10,7 @@ use Freento\Mcp\Model\EntityTool\ListResultFactory;
 use Freento\Mcp\Model\EntityTool\Schema;
 use Freento\Mcp\Model\Helper\DateTimeHelper;
 use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
+use Freento\Mcp\Model\ResourceModel\EntityTool\LinkField;
 use Magento\Catalog\Model\ResourceModel\Category\Attribute\CollectionFactory as AttributeCollectionFactory;
 use Magento\Eav\Model\Entity\Attribute;
 use Magento\Framework\App\ResourceConnection;
@@ -37,13 +38,15 @@ class CategoryResource extends AbstractResource
      * @param ListResultFactory $listResultFactory
      * @param DateTimeHelper $dateTimeHelper
      * @param AttributeCollectionFactory $attributeCollectionFactory
+     * @param LinkField $linkField
      */
     public function __construct(
         ResourceConnection $resourceConnection,
         ConditionApplier $conditionApplier,
         ListResultFactory $listResultFactory,
         DateTimeHelper $dateTimeHelper,
-        private readonly AttributeCollectionFactory $attributeCollectionFactory
+        private readonly AttributeCollectionFactory $attributeCollectionFactory,
+        private readonly LinkField $linkField
     ) {
         parent::__construct($resourceConnection, $conditionApplier, $listResultFactory, $dateTimeHelper);
     }
@@ -84,6 +87,7 @@ class CategoryResource extends AbstractResource
 
     /**
      * @inheritDoc
+     * @throws \Exception
      */
     protected function applyRequiredJoins(Select $select, Schema $schema, bool $addJoinedFieldsToSelect = true): void
     {
@@ -95,7 +99,10 @@ class CategoryResource extends AbstractResource
         $this->applyEavJoins($select, $schema, $addJoinedFieldsToSelect, $filterAttributes);
 
         // Outer query: join remaining EAV attributes for display columns
-        if ($addJoinedFieldsToSelect) {
+        if ($addJoinedFieldsToSelect && !$this->isAggregate) {
+            // The outer display joins reference the subquery link field, so expose it there.
+            $this->applyLinkFieldPassthrough($select);
+
             $displayAttributes = array_values(array_diff(
                 static::EAV_ATTRIBUTES,
                 array_keys($this->requestedFilters)
@@ -108,12 +115,29 @@ class CategoryResource extends AbstractResource
     }
 
     /**
+     * Expose the link field on the subquery so the outer EAV joins can reference it
+     *
+     * @param Select $select
+     * @throws \Exception
+     */
+    private function applyLinkFieldPassthrough(Select $select): void
+    {
+        $linkField = $this->linkField->forCategory();
+        if ($linkField === 'entity_id') {
+            return;
+        }
+
+        $select->columns([$linkField => "main_table.$linkField"]);
+    }
+
+    /**
      * Apply EAV attribute joins (default scope, store_id = 0)
      *
      * @param Select $select
      * @param Schema $schema
      * @param bool $addJoinedFieldsToSelect
      * @param string[] $attributeCodes Attribute codes to join (empty = all from EAV_ATTRIBUTES)
+     * @throws \Exception
      */
     protected function applyEavJoins(
         Select $select,
@@ -146,6 +170,7 @@ class CategoryResource extends AbstractResource
      * @param Attribute $attribute
      * @param string $attributeCode
      * @param bool $addColumns
+     * @throws \Exception
      */
     protected function joinEavAttribute(
         Select $select,
@@ -177,10 +202,13 @@ class CategoryResource extends AbstractResource
      * @param int $attributeId
      * @param int $storeId
      * @return string
+     * @throws \Exception
      */
     protected function buildEavJoinCondition(string $eavTable, int $attributeId, int $storeId): string
     {
-        return "main_table.entity_id = $eavTable.entity_id"
+        $linkField = $this->linkField->forCategory();
+
+        return "main_table.$linkField = $eavTable.$linkField"
             . " AND $eavTable.attribute_id = $attributeId"
             . " AND $eavTable.store_id = $storeId";
     }
@@ -246,6 +274,7 @@ class CategoryResource extends AbstractResource
      *
      * Wraps the filtered/sorted/limited SELECT as subquery, adds display-only EAV JOINs on outer query.
      * EAV display JOINs operate on ~50 rows instead of full category table.
+     * @throws \Exception
      */
     protected function fetchAll(Select $select, Schema $schema, array $arguments): array
     {

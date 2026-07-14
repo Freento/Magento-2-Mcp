@@ -63,6 +63,8 @@ class GetProductTierPrices extends AbstractTool
                 new Field(
                     name: 'entity_id',
                     type: 'integer',
+                    column: 'catalog_product_entity.entity_id',
+                    sortable: false,
                     description: 'Product entity ID'
                 ),
                 new Field(

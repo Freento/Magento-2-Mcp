@@ -97,7 +97,7 @@ class GetQuotes extends AbstractTool
                 new Field(
                     name: 'items_qty',
                     type: 'numeric',
-                    column: false,
+                    column: 'items.items_qty',
                     filter: false,
                     sortable: false,
                     allowAggregate: true

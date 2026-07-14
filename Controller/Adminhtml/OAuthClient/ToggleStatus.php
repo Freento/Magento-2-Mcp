@@ -8,9 +8,10 @@ use Freento\Mcp\Model\OAuth\ClientFactory;
 use Freento\Mcp\Model\ResourceModel\OAuth\Client as ClientResource;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\App\Action\HttpPostActionInterface;
 
-class ToggleStatus extends Action implements HttpPostActionInterface
+class ToggleStatus extends Action implements HttpPostActionInterface, HttpGetActionInterface
 {
     public const ADMIN_RESOURCE = 'Freento_Mcp::oauth_clients';
 
