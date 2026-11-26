@@ -28,19 +28,4 @@ class OAuthClientListingDataProvider extends AbstractDataProvider
         parent::__construct($name, $primaryFieldName, $requestFieldName, $meta, $data);
         $this->collection = $collectionFactory->create()->joinRoleName()->joinAdminData();
     }
-
-    /**
-     * @inheritDoc
-     */
-    public function getData(): array
-    {
-        $data = parent::getData();
-        foreach ($data['items'] as &$item) {
-            $adminUserName = $item['admin_username'] ?? '';
-            $adminEmail = $item['admin_email'] ?? '';
-            $item['created_by'] = "$adminUserName ($adminEmail)";
-        }
-
-        return $data;
-    }
 }

@@ -58,7 +58,7 @@ interface AclRoleRepositoryInterface
      * Get tools assigned to role
      *
      * @param int $roleId
-     * @return int[]
+     * @return string[]
      */
     public function getRoleTools(int $roleId): array;
 

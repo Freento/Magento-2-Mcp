@@ -236,6 +236,66 @@ class ConditionApplierTest extends TestCase
         $this->subject->apply($this->selectMock, 'main_table.deleted_at', ['null' => false]);
     }
 
+    public function testApplyNullTrueWithOtherOperatorMatchesEmptyValues(): void
+    {
+        $this->selectMock->expects($this->once())
+            ->method('where')
+            ->with("((main_table.to_date >= '2024-01-01') OR main_table.to_date IS NULL)");
+
+        $this->subject->apply($this->selectMock, 'main_table.to_date', ['gte' => '2024-01-01', 'null' => true]);
+    }
+
+    public function testApplyNullTrueWithSeveralOperators(): void
+    {
+        $this->selectMock->expects($this->once())
+            ->method('where')
+            ->with(
+                "((main_table.to_date >= '2024-01-01' AND main_table.to_date <= '2024-12-31')"
+                . ' OR main_table.to_date IS NULL)'
+            );
+
+        $this->subject->apply(
+            $this->selectMock,
+            'main_table.to_date',
+            ['NULL' => true, 'gte' => '2024-01-01', 'lte' => '2024-12-31']
+        );
+    }
+
+    public function testApplyNullFalseWithOtherOperatorUsesAnd(): void
+    {
+        $conditions = [];
+        $this->selectMock->expects($this->exactly(2))
+            ->method('where')
+            ->willReturnCallback(function (string $condition) use (&$conditions) {
+                $conditions[] = $condition;
+                return $this->selectMock;
+            });
+
+        $this->subject->apply($this->selectMock, 'main_table.to_date', ['gte' => '2024-01-01', 'null' => false]);
+
+        $this->assertEquals(
+            ["main_table.to_date >= '2024-01-01'", 'main_table.to_date IS NOT NULL'],
+            $conditions
+        );
+    }
+
+    public function testApplyNullTrueWithIgnoredOperatorUsesNullOnly(): void
+    {
+        $this->selectMock->expects($this->once())
+            ->method('where')
+            ->with('main_table.to_date IS NULL');
+
+        $this->subject->apply($this->selectMock, 'main_table.to_date', ['in' => [], 'null' => true]);
+    }
+
+    public function testBuildConditionNullTrueWithOtherOperator(): void
+    {
+        $this->assertEquals(
+            "((main_table.to_date >= '2024-01-01') OR main_table.to_date IS NULL)",
+            $this->subject->buildCondition('main_table.to_date', ['gte' => '2024-01-01', 'null' => true])
+        );
+    }
+
     // =========================================================================
     // apply() - Multiple operators
     // =========================================================================

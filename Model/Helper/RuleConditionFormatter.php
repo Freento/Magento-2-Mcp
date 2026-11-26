@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Freento\Mcp\Model\Helper;
 
+use Psr\Log\LoggerInterface;
+
 /**
- * Converts Magento sales rule condition/action trees into human-readable text.
+ * Converts Magento rule condition/action trees into human-readable text.
  *
- * Handles the recursive condition structure stored in salesrule.conditions_serialized
- * and salesrule.actions_serialized.
+ * Handles the recursive condition structure stored in salesrule.conditions_serialized,
+ * salesrule.actions_serialized and catalogrule.conditions_serialized.
  */
 class RuleConditionFormatter
 {
+    private const EMPTY_CONDITION = '(none)';
+
     private const OPERATOR_MAP = [
         '==' => '=',
         '!=' => '!=',
@@ -26,6 +30,36 @@ class RuleConditionFormatter
     ];
 
     /**
+     * @param LoggerInterface $logger
+     */
+    public function __construct(
+        private readonly LoggerInterface $logger
+    ) {
+    }
+
+    /**
+     * Decode serialized condition JSON and convert it to human-readable string
+     *
+     * @param mixed $serialized JSON-encoded condition tree
+     * @return string Human-readable condition string, "(none)" if empty or "(parse error)" if JSON is invalid
+     */
+    public function formatSerialized(mixed $serialized): string
+    {
+        if (!$serialized || !is_string($serialized)) {
+            return self::EMPTY_CONDITION;
+        }
+
+        try {
+            $tree = json_decode($serialized, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            $this->logger->error('Failed to decode rule condition JSON', ['exception' => $e]);
+            return '(parse error)';
+        }
+
+        return $this->format(is_array($tree) ? $tree : null);
+    }
+
+    /**
      * Convert deserialized condition tree to human-readable string
      *
      * @param array|null $conditionTree Deserialized condition tree from JSON
@@ -34,12 +68,12 @@ class RuleConditionFormatter
     public function format(?array $conditionTree): string
     {
         if ($conditionTree === null || empty($conditionTree['conditions'])) {
-            return '(none)';
+            return self::EMPTY_CONDITION;
         }
 
         $result = $this->formatNode($conditionTree);
 
-        return $result !== '' ? $result : '(none)';
+        return $result !== '' ? $result : self::EMPTY_CONDITION;
     }
 
     /**

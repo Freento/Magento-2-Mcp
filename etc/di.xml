@@ -26,6 +26,8 @@
                 <item name="get_quotes" xsi:type="object">Freento\Mcp\Model\Tool\GetQuotes</item>
                 <item name="get_quote_items" xsi:type="object">Freento\Mcp\Model\Tool\GetQuoteItems</item>
                 <item name="get_creditmemos" xsi:type="object">Freento\Mcp\Model\Tool\GetCreditmemos</item>
+                <item name="get_invoices" xsi:type="object">Freento\Mcp\Model\Tool\GetInvoices</item>
+                <item name="get_shipments" xsi:type="object">Freento\Mcp\Model\Tool\GetShipments</item>
                 <!-- Catalog -->
                 <item name="get_products" xsi:type="object">Freento\Mcp\Model\Tool\GetProducts</item>
                 <item name="get_categories" xsi:type="object">Freento\Mcp\Model\Tool\GetCategories</item>
@@ -35,8 +37,10 @@
                 <item name="get_stock_single_stock" xsi:type="object">Freento\Mcp\Model\Tool\GetStockSingleStock</item>
                 <!-- Customer -->
                 <item name="get_customers" xsi:type="object">Freento\Mcp\Model\Tool\GetCustomers</item>
+                <item name="get_customer_addresses" xsi:type="object">Freento\Mcp\Model\Tool\GetCustomerAddresses</item>
                 <!-- Marketing -->
                 <item name="get_cart_price_rules" xsi:type="object">Freento\Mcp\Model\Tool\GetCartPriceRules</item>
+                <item name="get_catalog_price_rules" xsi:type="object">Freento\Mcp\Model\Tool\GetCatalogPriceRules</item>
                 <item name="get_coupons" xsi:type="object">Freento\Mcp\Model\Tool\GetCoupons</item>
                 <!-- Admin -->
                 <item name="get_admins" xsi:type="object">Freento\Mcp\Model\Tool\GetAdmins</item>

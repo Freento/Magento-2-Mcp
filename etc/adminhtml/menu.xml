@@ -6,7 +6,7 @@
              title="Freento MCP"
              module="Freento_Mcp"
              sortOrder="100"
-             parent="Magento_Backend::system"
+             parent="Freento_Base::freento_base"
              resource="Freento_Mcp::mcp"/>
 
         <add id="Freento_Mcp::acl_rules"

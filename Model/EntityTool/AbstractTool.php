@@ -739,6 +739,7 @@ abstract class AbstractTool implements ToolInterface
      * - numeric/currency/float → numeric operators (gt, gte, lt, lte, etc.)
      * - integer → integer operators
      * - date → date operators
+     * - calendar_date → calendar date operators (date operators plus null)
      * - string (default) → string operators (eq, like, in, etc.)
      *
      * @param string $type Field type
@@ -751,6 +752,7 @@ abstract class AbstractTool implements ToolInterface
             'numeric', 'currency', 'float' => Operators::numericField($description),
             'integer', 'int' => Operators::integerField($description),
             'date', 'datetime' => Operators::dateField($description),
+            'calendar_date' => Operators::calendarDateField($description),
             default => Operators::stringField($description),
         };
     }

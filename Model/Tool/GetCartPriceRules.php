@@ -14,7 +14,6 @@ use Freento\Mcp\Model\ResourceModel\EntityTool\AbstractResource;
 use Freento\Mcp\Model\ResourceModel\EntityTool\CartPriceRuleResource;
 use Freento\Mcp\Model\ToolResultFactory;
 use Freento\Mcp\Model\EntityTool\SchemaFactory;
-use Psr\Log\LoggerInterface;
 
 class GetCartPriceRules extends AbstractTool
 {
@@ -25,7 +24,6 @@ class GetCartPriceRules extends AbstractTool
      * @param StringHelper $stringHelper
      * @param DateTimeHelper $dateTimeHelper
      * @param RuleConditionFormatter $conditionFormatter
-     * @param LoggerInterface $logger
      */
     public function __construct(
         private readonly CartPriceRuleResource $cartPriceRuleResource,
@@ -33,8 +31,7 @@ class GetCartPriceRules extends AbstractTool
         ToolResultFactory $resultFactory,
         StringHelper $stringHelper,
         DateTimeHelper $dateTimeHelper,
-        private readonly RuleConditionFormatter $conditionFormatter,
-        private readonly LoggerInterface $logger
+        private readonly RuleConditionFormatter $conditionFormatter
     ) {
         parent::__construct($resultFactory, $stringHelper, $dateTimeHelper);
     }
@@ -88,13 +85,13 @@ class GetCartPriceRules extends AbstractTool
                 ),
                 new Field(
                     name: 'from_date',
-                    type: 'date',
-                    description: 'Start date'
+                    type: 'calendar_date',
+                    description: 'Start date (YYYY-MM-DD, empty = no start limit)'
                 ),
                 new Field(
                     name: 'to_date',
-                    type: 'date',
-                    description: 'End date'
+                    type: 'calendar_date',
+                    description: 'End date (YYYY-MM-DD, empty = no end limit)'
                 ),
                 new Field(
                     name: 'uses_per_customer',
@@ -216,7 +213,7 @@ class GetCartPriceRules extends AbstractTool
     protected function formatValue(mixed $value, ?Field $field): string
     {
         if ($field !== null && in_array($field->getName(), ['conditions', 'actions'])) {
-            return $this->formatCondition($value);
+            return $this->conditionFormatter->formatSerialized($value);
         }
 
         return parent::formatValue($value, $field);
@@ -253,27 +250,5 @@ class GetCartPriceRules extends AbstractTool
         }
 
         return $rows;
-    }
-
-    /**
-     * Decode serialized condition JSON and format as human-readable string
-     *
-     * @param mixed $serialized JSON-encoded condition tree
-     * @return string Human-readable condition string
-     */
-    private function formatCondition(mixed $serialized): string
-    {
-        if (!$serialized || !is_string($serialized)) {
-            return '(none)';
-        }
-
-        try {
-            $tree = json_decode($serialized, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            $this->logger->error('Failed to decode rule condition JSON', ['exception' => $e]);
-            return '(parse error)';
-        }
-
-        return $this->conditionFormatter->format($tree);
     }
 }

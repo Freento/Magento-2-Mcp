@@ -27,6 +27,8 @@ Freento MCP is a Magento 2 extension that implements the [Model Context Protocol
 - Monitor system health (PHP, MySQL, cache, search engine versions)
 - Audit admin users and security settings
 
+The module gives AI assistants **read-only** access. To let them create and update store data, add [Freento MCP Write](https://github.com/Freento/Magento-2-MCP-write) — see [Write Tools](#write-tools-mcp-write-add-on).
+
 **How it works:**
 
 ```
@@ -58,10 +60,11 @@ php bin/magento cache:flush
 ### Manual Installation
 
 1. Download the module and extract to `app/code/Freento/Mcp/`
-2. Enable the module:
+2. Download [Freento Base](https://github.com/Freento/base) (`freento/base`, required dependency) and extract to `app/code/Freento/Base/`
+3. Enable the modules:
 
 ```bash
-php bin/magento module:enable Freento_Mcp
+php bin/magento module:enable Freento_Base Freento_Mcp
 php bin/magento setup:upgrade
 php bin/magento cache:flush
 ```
@@ -78,7 +81,7 @@ Expected output: `Module is enabled`
 
 ### Step 1: Create ACL Role
 
-1. In Magento Admin, go to **System > Freento MCP > ACL Rules**
+1. In Magento Admin, go to **Freento > Freento MCP > ACL Rules**
 2. Click **Add New Role**
 3. Enter a name (e.g., "AI Assistant")
 4. Select which tools the role can access:
@@ -91,7 +94,7 @@ Expected output: `Module is enabled`
 
 ### Step 2: Create OAuth Client
 
-1. Go to **System > Freento MCP > AI MCP Clients**
+1. Go to **Freento > Freento MCP > AI MCP Clients**
 2. Click **Add New Client**
 3. Enter a name (e.g., "Claude Code")
 4. Select the ACL Role created in Step 1
@@ -164,7 +167,7 @@ Each tool supports flexible filtering, sorting, and pagination. Combined with AI
 
 **AI can:**
 - Run multiple queries across different entities in one conversation
-- Filter by any field using operators: `eq`, `neq`, `in`, `like`, `gt`, `gte`, `lt`, `lte`
+- Filter by any field using operators: `eq`, `neq`, `in`, `nin`, `like`, `nlike`, `gt`, `gte`, `lt`, `lte`
 - Sort and paginate results
 - Aggregate with `sum`, `count`, `avg`, `min`, `max`
 - Group by field or time period (day, month)
@@ -179,12 +182,15 @@ Each tool supports flexible filtering, sorting, and pagination. Combined with AI
 | `get_quotes` | Query shopping carts (active and abandoned) |
 | `get_quote_items` | Get cart line items |
 | `get_creditmemos` | Query credit memos |
+| `get_invoices` | Query invoices |
+| `get_shipments` | Query shipments |
 
 ### Marketing Tools
 
 | Tool | Description |
 |------|-------------|
 | `get_cart_price_rules` | Query cart price rules |
+| `get_catalog_price_rules` | Query catalog price rules |
 | `get_coupons` | Query coupons |
 
 ### Catalog Tools
@@ -203,6 +209,7 @@ Each tool supports flexible filtering, sorting, and pagination. Combined with AI
 | Tool | Description |
 |------|-------------|
 | `get_customers` | Query customer accounts |
+| `get_customer_addresses` | Query customer addresses |
 
 ### Admin Tools
 
@@ -217,6 +224,16 @@ Each tool supports flexible filtering, sorting, and pagination. Combined with AI
 |------|-------------|
 | `get_system_versions` | Get Magento, PHP, MySQL, Redis, OpenSearch versions |
 | `get_stores` | Get store hierarchy (websites, store groups, store views) |
+
+### Write Tools (MCP Write add-on)
+
+All tools above are read-only. [Freento MCP Write](https://github.com/Freento/Magento-2-MCP-write) (`freento/module-mcp-write`, also on [Adobe Commerce Marketplace](https://commercemarketplace.adobe.com/freento-module-mcp-write.html)) is an add-on that lets AI assistants change store data:
+
+- **Catalog** — create products, update attributes, prices, stock and category assignments
+- **Sales** — add order comments, create shipments with tracking numbers, create offline credit memos
+- **Customers** — update customer accounts
+
+Write tools are registered in the same tool registry, so they use the same endpoint, OAuth clients, access tokens and ACL roles — no second connection is needed. They are disabled by default and support a dry run mode.
 
 ## Usage Examples
 
@@ -439,7 +456,7 @@ The `get_orders` tool supports aggregation for analytics:
 
 ### "Access denied" error
 
-The ACL Role lacks required permissions. Edit the ACL Role in **System > Freento MCP > ACL Rules** and grant access to the necessary tools.
+The ACL Role lacks required permissions. Edit the ACL Role in **Freento > Freento MCP > ACL Rules** and grant access to the necessary tools.
 
 ### Connection timeout
 

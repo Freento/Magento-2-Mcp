@@ -20,6 +20,8 @@ use Magento\Framework\DB\Select;
  * - like, nlike: SQL LIKE patterns (use % as wildcard)
  * - gt, gte, lt, lte: comparison operators
  * - null: IS NULL / IS NOT NULL
+ *   (null: true combined with other operators also matches empty values,
+ *   e.g. ['gte' => '2024-01-01', 'null' => true] → field >= '2024-01-01' OR field IS NULL)
  *
  * Usage in Resource:
  * ```php
@@ -38,6 +40,8 @@ use Magento\Framework\DB\Select;
  */
 class ConditionApplier
 {
+    private const OPERATOR_NULL = 'null';
+
     /**
      * @param DateTimeHelper $dateTimeHelper
      * @param ResourceConnection $resourceConnection
@@ -71,8 +75,17 @@ class ConditionApplier
             return;
         }
 
+        if ($this->hasNullAlternative($condition)) {
+            $sqlCondition = $this->buildOperatorsCondition($field, $condition);
+            if ($sqlCondition !== null) {
+                $select->where($sqlCondition);
+            }
+
+            return;
+        }
+
         foreach ($condition as $operator => $value) {
-            $this->applyOperator($select, $field, strtolower($operator), $value);
+            $this->applyOperator($select, $field, strtolower((string)$operator), $value);
         }
     }
 
@@ -208,15 +221,68 @@ class ConditionApplier
             return $connection->quoteInto("$field = ?", $condition);
         }
 
-        $parts = [];
+        return $this->buildOperatorsCondition($field, $condition);
+    }
+
+    /**
+     * Check if condition combines "null: true" with other operators
+     *
+     * @param array $condition Array with operators
+     * @return bool
+     */
+    private function hasNullAlternative(array $condition): bool
+    {
+        if (count($condition) < 2) {
+            return false;
+        }
+
         foreach ($condition as $operator => $value) {
-            $part = $this->buildOperatorCondition($field, strtolower($operator), $value);
-            if ($part !== null) {
-                $parts[] = $part;
+            if (strtolower((string)$operator) === self::OPERATOR_NULL && $value) {
+                return true;
             }
         }
 
-        return $parts ? implode(' AND ', $parts) : null;
+        return false;
+    }
+
+    /**
+     * Build SQL condition string for a set of operators
+     *
+     * Operators are combined with AND. "null: true" is an alternative to the other operators,
+     * so the result also matches rows where the field is empty.
+     *
+     * @param string $field Full field name with table alias
+     * @param array $condition Array with operators
+     * @return string|null SQL condition string or null if no valid condition
+     */
+    private function buildOperatorsCondition(string $field, array $condition): ?string
+    {
+        $parts = [];
+        $nullAlternative = null;
+        foreach ($condition as $operator => $value) {
+            $operator = strtolower((string)$operator);
+            $part = $this->buildOperatorCondition($field, $operator, $value);
+            if ($part === null) {
+                continue;
+            }
+
+            if ($operator === self::OPERATOR_NULL && $value) {
+                $nullAlternative = $part;
+                continue;
+            }
+
+            $parts[] = $part;
+        }
+
+        if ($nullAlternative === null) {
+            return $parts ? implode(' AND ', $parts) : null;
+        }
+
+        if (!$parts) {
+            return $nullAlternative;
+        }
+
+        return '((' . implode(' AND ', $parts) . ') OR ' . $nullAlternative . ')';
     }
 
     /**
@@ -275,7 +341,7 @@ class ConditionApplier
             'nin', 'not_in' => is_array($value) && !empty($value)
                 ? $field . ' NOT IN (' . implode(',', array_map([$connection, 'quote'], $value)) . ')'
                 : null,
-            'null' => $value ? "$field IS NULL" : "$field IS NOT NULL",
+            self::OPERATOR_NULL => $value ? "$field IS NULL" : "$field IS NOT NULL",
             default => null,
         };
     }

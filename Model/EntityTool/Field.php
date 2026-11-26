@@ -49,8 +49,10 @@ class Field
 {
     /**
      * @param string $name Field name (used as key in output and input schema)
-     * @param string $type Field type: 'string', 'integer', 'numeric', 'currency', 'date'
+     * @param string $type Field type: 'string', 'integer', 'numeric', 'currency', 'date', 'calendar_date'
      *                     Affects input schema operators and output formatting
+     *                     ('date' is a UTC timestamp converted to store timezone,
+     *                     'calendar_date' is a DATE column used as-is)
      * @param bool|string $column DB column mapping:
      *                            - true: use "{tableAlias}.{name}" (default)
      *                            - false: field has no DB column (computed/virtual)
@@ -89,7 +91,7 @@ class Field
     /**
      * Get field type for schema generation and value formatting
      *
-     * @return string One of: 'string', 'integer', 'numeric', 'currency', 'date'
+     * @return string One of: 'string', 'integer', 'numeric', 'currency', 'date', 'calendar_date'
      */
     public function getType(): string
     {

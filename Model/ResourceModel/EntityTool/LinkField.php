@@ -6,10 +6,11 @@ namespace Freento\Mcp\Model\ResourceModel\EntityTool;
 
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Catalog\Api\Data\ProductInterface;
+use Magento\CatalogRule\Api\Data\RuleInterface;
 use Magento\Framework\EntityManager\MetadataPool;
 
 /**
- * Resolves the catalog EAV link field for products and categories.
+ * Resolves the link field for catalog entities (products, categories, catalog price rules).
  */
 class LinkField
 {
@@ -41,5 +42,16 @@ class LinkField
     public function forCategory(): string
     {
         return $this->metadataPool->getMetadata(CategoryInterface::class)->getLinkField();
+    }
+
+    /**
+     * Get the catalog price rule link field
+     *
+     * @return string
+     * @throws \Exception
+     */
+    public function forCatalogRule(): string
+    {
+        return $this->metadataPool->getMetadata(RuleInterface::class)->getLinkField();
     }
 }

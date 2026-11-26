@@ -13,6 +13,7 @@ namespace Freento\Mcp\Model\EntityTool;
  * - string: eq, neq, in, nin, like, nlike
  * - numeric/integer: eq, neq, gt, gte, lt, lte, in, nin
  * - date: eq, neq, gt, gte, lt, lte
+ * - calendar date: eq, neq, gt, gte, lt, lte, null
  *
  * Usage in custom tool:
  * ```php
@@ -125,6 +126,36 @@ class Operators
     }
 
     /**
+     * Base operators schema for calendar date fields (DATE columns that can be empty)
+     *
+     * Operators: eq, neq, gt, gte, lt, lte, null
+     * Dates should be in format: YYYY-MM-DD
+     *
+     * @return array JSON Schema definition
+     * phpcs:disable Magento2.Functions.StaticFunction
+     */
+    public static function calendarDate(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'eq' => ['type' => 'string', 'description' => 'Equals (YYYY-MM-DD)'],
+                'neq' => ['type' => 'string', 'description' => 'Not equals'],
+                'gt' => ['type' => 'string', 'description' => 'After date'],
+                'gte' => ['type' => 'string', 'description' => 'On or after date'],
+                'lt' => ['type' => 'string', 'description' => 'Before date'],
+                'lte' => ['type' => 'string', 'description' => 'On or before date'],
+                'null' => [
+                    'type' => 'boolean',
+                    'description' => 'true = date is not set, false = date is set. Combined with other operators, '
+                        . 'true also includes rows without date (e.g. {"gte": "2024-01-01", "null": true} '
+                        . '= on or after date OR not set)'
+                ]
+            ]
+        ];
+    }
+
+    /**
      * String field schema with description
      *
      * @param string $description Field description for LLM
@@ -188,6 +219,24 @@ class Operators
     public static function dateField(string $description = ''): array
     {
         $result = self::date();
+        if ($description) {
+            $result['description'] = $description;
+        }
+        return $result;
+    }
+
+    /**
+     * Calendar date field schema with description
+     *
+     * Uses calendar date operators (eq, neq, gt, gte, lt, lte, null)
+     *
+     * @param string $description Field description for LLM
+     * @return array JSON Schema with operators
+     * phpcs:disable Magento2.Functions.StaticFunction
+     */
+    public static function calendarDateField(string $description = ''): array
+    {
+        $result = self::calendarDate();
         if ($description) {
             $result['description'] = $description;
         }

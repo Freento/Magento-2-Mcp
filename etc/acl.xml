@@ -11,7 +11,7 @@
                         </resource>
                     </resource>
                 </resource>
-                <resource id="Magento_Backend::system">
+                <resource id="Freento_Base::freento_base">
                     <resource id="Freento_Mcp::mcp" title="Freento MCP" sortOrder="100">
                         <resource id="Freento_Mcp::acl_rules" title="ACL Rules" sortOrder="20"/>
                         <resource id="Freento_Mcp::oauth_clients" title="AI MCP Clients" sortOrder="30"/>
